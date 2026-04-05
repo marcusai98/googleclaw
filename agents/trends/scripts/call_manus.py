@@ -102,7 +102,7 @@ Return exactly 20 candidates. Only the JSON array, nothing else.
 def submit_manus_task(api_key: str, prompt: str) -> str:
     headers = {"API_KEY": api_key, "Content-Type": "application/json"}
     r = requests.post(f"{MANUS_API_URL}/tasks",
-                      json={"input": prompt, "version": "v2"},
+                      json={"prompt": prompt},
                       headers=headers, timeout=30)
     r.raise_for_status()
     data = r.json()

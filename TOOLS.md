@@ -1,22 +1,39 @@
 # TOOLS.md — Required Integrations per Agent
 
-Every agent needs specific APIs and credentials activated before it can run.
-This file is the single reference for what to set up and where.
-
+Every agent needs specific APIs and credentials before it can run.
 All credentials go into `config.json` (never committed to git).
 See `config.example.json` for the full structure.
 
 ---
 
-## MIDAS — P&L Sync
+## TRENDS — Daily Market Research
+> Schedule: Daily 00:00 | Model: Manus + GPT
 
-| Tool | Purpose | How to activate |
+| Tool | Purpose | Activate |
 |---|---|---|
-| **Shopify Admin API** | Revenue, orders, payment gateway data | Store Admin → Settings → Apps → Develop apps → Create app → enable Orders (read) scope → install → copy Admin API access token |
-| **Google Ads API** | Daily ad spend per store | [Google Ads API Center](https://developers.google.com/google-ads/api/docs/start) → apply for developer token → create OAuth client ID → generate refresh token |
-| **Google Sheets API** | COGS per product (supplier-filled) | [Google Cloud Console](https://console.cloud.google.com) → enable Sheets API → create Service Account → share the COGS sheet with the service account email |
+| **Manus AI** | Deep trend research (TikTok, Reddit, seasonal) | [manus.ai](https://manus.ai) → API settings → generate key |
+| **pytrends** | Google Trends curve validation | `pip install pytrends` — no API key needed |
+| **Google Ads API** | Keyword Planner volume + CPC | Reuse MIDAS credentials |
 
-**Config keys needed:**
+```
+manus.apiKey
+store.niche
+store.market
+store.language
+googleAds.*  (reuse from MIDAS)
+```
+
+---
+
+## MIDAS — Daily P&L Sync
+> Schedule: Daily 07:00 | Model: GPT
+
+| Tool | Purpose | Activate |
+|---|---|---|
+| **Shopify Admin API** | Revenue, orders, payment gateway | Admin → Settings → Apps → Develop apps → read_orders scope |
+| **Google Ads API** | Daily ad spend | [Google Ads API Center](https://developers.google.com/google-ads/api/docs/start) → developer token + OAuth |
+| **Google Sheets API** | COGS per product | Cloud Console → enable Sheets API → Service Account → share sheet |
+
 ```
 shopify.storeDomain
 shopify.accessToken
@@ -26,116 +43,116 @@ googleAds.clientId
 googleAds.clientSecret
 googleAds.refreshToken
 cogsSheet.spreadsheetId
-cogsSheet.serviceAccountFile (path to downloaded JSON key)
-```
-
----
-
-## TRENDS — Weekly Market Research
-
-| Tool | Purpose | How to activate |
-|---|---|---|
-| **Manus AI** | Deep trend research with Google Trends + Keyword Planner validation | [manus.ai](https://manus.ai) → sign up → API settings → generate API key |
-
-**Config keys needed:**
-```
-store.niche
-store.market
-store.language
-manus.apiKey
-```
-
-**Note:** Manus handles Google Trends and Keyword Planner data internally — no separate Google API activation needed.
-
----
-
-## HERALD — Performance Monitor
-
-| Tool | Purpose | How to activate |
-|---|---|---|
-| **Google Ads API** | Campaign-level ROAS data | Same as MIDAS — reuse same credentials |
-| **MIDAS output** | Store-level P&L history | No activation needed — reads `data/dashboard.json` |
-
-**Config keys needed:**
-```
-googleAds.customerId (same as MIDAS)
-googleAds.developerToken
-googleAds.clientId
-googleAds.clientSecret
-googleAds.refreshToken
-thresholds.scaleTriggerRoas
-thresholds.alertTriggerRoas
-thresholds.alertAfterDays
+cogsSheet.serviceAccountFile
 ```
 
 ---
 
 ## SCOUT — Daily Product Research
+> Schedule: Daily 10:00 | Model: GPT
 
-| Tool | Purpose | How to activate |
+| Tool | Purpose | Activate |
 |---|---|---|
-| **AliExpress Affiliate API** | Product search, pricing, ratings, stock | [AliExpress Affiliate Portal](https://portals.aliexpress.com) → apply for affiliate access → API credentials |
-| **TRENDS output** | Validated trend list as search input | No activation needed — reads `data/trends.json` |
+| **CJ Dropshipping API** | Product search, pricing, stock, shipping | [developers.cjdropshipping.com](https://developers.cjdropshipping.com) → register account → use email + password in config |
+| **Amazon PA-API** | BSR (demand proof), pricing ceiling | [Amazon Associates](https://affiliate-program.amazon.com) → apply → Tools → PA-API credentials |
+| **Competitor stores** | Shopify /products.json (public) | No API needed — just add competitor URLs in config |
+| **TRENDS output** | Validated trend list | No activation — reads `data/trends.json` |
 
-**Config keys needed:**
 ```
-aliexpress.appKey
-aliexpress.appSecret
-aliexpress.trackingId
-scout.dailyLimit (default: 10)
-scout.autoPublishScore (default: 75)
-scout.inboxMinScore (default: 60)
+cj.email
+cj.password
+amazon.accessKey
+amazon.secretKey
+amazon.partnerTag
+scout.minSellingPrice       (default: 40)
+scout.candidatesPerMethod   (default: 10)
+scout.methods.cj.enabled
+scout.methods.amazon.enabled
+scout.methods.competitors.enabled
+scout.competitors.urls      (list of competitor Shopify store URLs)
 ```
-
-**Note:** AliExpress Affiliate API requires approval — can take 1-3 days.
 
 ---
 
-## LISTER — Shopify Publisher
+## LISTER — On-Approval Product Publisher
+> Trigger: User approval | Model: Claude
 
-| Tool | Purpose | How to activate |
+| Tool | Purpose | Activate |
 |---|---|---|
-| **Shopify Admin API** | Create product listings | Same as MIDAS — reuse same credentials (needs write scope) |
-| **Gemini API** | Generate 3 product images per listing | [Google AI Studio](https://aistudio.google.com) → Get API key |
-| **Anthropic API** | Generate SEO title + description | [Anthropic Console](https://console.anthropic.com) → API keys → Create key |
+| **Shopify Admin API** | Create product + upload images | Same credentials as MIDAS — needs **write_products** scope |
+| **CJ Dropshipping API** | Full product data, all variants, images | Same as SCOUT |
+| **Anthropic API** | SEO copy (title, description, tags, meta) | [console.anthropic.com](https://console.anthropic.com) → API Keys → Create |
+| **Gemini API** | Generate lifestyle product images | [aistudio.google.com](https://aistudio.google.com) → Get API key |
 
-**Config keys needed:**
 ```
-shopify.storeDomain (same as MIDAS)
-shopify.accessToken (must have write_products scope)
-gemini.apiKey
+shopify.storeDomain
+shopify.accessToken          (write_products scope required)
+cj.email
+cj.password
 anthropic.apiKey
+gemini.apiKey
+lister.publishStatus         ("active" | "draft")
+lister.imageMode             ("supplement" | "optimize_all")
+lister.cogsMultiplier        (default: 3.0)
+lister.minMarginMultiplier   (default: 2.0)
+lister.useAiPriceSuggestion  (default: true)
+```
+
+---
+
+## FEED — Weekly Feed Optimizer
+> Schedule: Wednesday 06:00 | Model: GPT
+
+| Tool | Purpose | Activate |
+|---|---|---|
+| **Shopify Admin API** | Read + update products, upload images | Same credentials — needs read/write_products scope |
+| **Google Ads API** | Product-level ad spend (Shopping) | Same as MIDAS |
+| **Gemini API** | Generate new lifestyle images | Same as LISTER |
+| **OpenAI API** | Fill missing product fields | [platform.openai.com](https://platform.openai.com) → API keys |
+| **MIDAS dashboard.json** | ROAS per product | No activation — reads `data/dashboard.json` |
+| **TRENDS history** | Trend direction per product | No activation — reads `data/trends-history.json` |
+
+```
+shopify.storeDomain
+shopify.accessToken
+googleAds.*
+gemini.apiKey
+openai.apiKey
+feed.priceReduction          (default: 5.0)
+feed.priceFloorMultiplier    (default: 2.0)
+feed.imageRefreshCount       (default: 2)
 ```
 
 ---
 
 ## Notifications (all agents)
 
-| Tool | Purpose | How to activate |
+| Tool | Purpose | Activate |
 |---|---|---|
-| **Telegram Bot** | Urgent alerts, daily digest, SCOUT findings | [@BotFather](https://t.me/BotFather) → /newbot → copy token → get your chat ID |
+| **Telegram Bot** | Alerts, SCOUT findings, FEED summary | [@BotFather](https://t.me/BotFather) → /newbot → copy token + get chat ID |
 
-**Config keys needed:**
 ```
 notifications.telegram.botToken
 notifications.telegram.chatId
-notifications.telegram.enabled (true/false)
+notifications.telegram.enabled
 ```
 
 ---
 
-## Quick checklist — minimum to get started
+## Quick setup checklist
 
-For a basic working setup (MIDAS + TRENDS only):
-
-- [ ] Shopify Admin API token (read orders)
+**Minimum (MIDAS + TRENDS only):**
+- [ ] Shopify Admin API token (read_orders)
 - [ ] Google Ads API credentials
-- [ ] Google Sheets API service account + COGS sheet
+- [ ] Google Sheets API + service account + COGS sheet
 - [ ] Manus AI API key
-- [ ] Telegram bot (optional but recommended)
+- [ ] Telegram bot (recommended)
 
-Full V1 stack additionally requires:
-- [ ] AliExpress Affiliate API (SCOUT)
-- [ ] Gemini API key (LISTER)
+**Full V1:**
+- [ ] CJ Dropshipping account (SCOUT + LISTER)
+- [ ] Amazon PA-API approval (SCOUT)
+- [ ] Competitor store URLs (SCOUT)
 - [ ] Anthropic API key (LISTER)
-- [ ] Shopify write_products scope (LISTER)
+- [ ] Gemini API key (LISTER + FEED)
+- [ ] OpenAI API key (FEED + pricing)
+- [ ] Shopify write_products scope (LISTER + FEED)

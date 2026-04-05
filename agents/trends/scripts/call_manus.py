@@ -301,6 +301,87 @@ def google_ads_keyword_data(candidates: list, cfg: dict) -> dict:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# TRENDS HISTORY — cooldown + saturation logic
+# ─────────────────────────────────────────────────────────────────────────────
+
+COOLDOWN_WEEKS   = 4    # don't re-report within 4 weeks
+SATURATION_COUNT = 3    # after 3x in 8 weeks → saturated
+SATURATION_WEEKS = 8
+SCORE_JUMP       = 15   # override cooldown if score jumped this much
+
+def load_history(path: str) -> dict:
+    if Path(path).exists():
+        with open(path) as f:
+            return json.load(f)
+    return {"seen": {}}
+
+def save_history(history: dict, path: str):
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w") as f:
+        json.dump(history, f, indent=2, ensure_ascii=False)
+
+def is_on_cooldown(name: str, new_score: int, history: dict) -> tuple[bool, str]:
+    """Returns (skip: bool, reason: str)"""
+    seen = history.get("seen", {})
+    today = datetime.date.today()
+
+    # Normalize name for matching
+    key = name.lower().strip()
+    entry = None
+    for k, v in seen.items():
+        if k.lower().strip() == key:
+            entry = v
+            break
+
+    if not entry:
+        return False, "new"
+
+    last_seen  = datetime.date.fromisoformat(entry["lastSeen"])
+    first_seen = datetime.date.fromisoformat(entry["firstSeen"])
+    weeks_since = (today - last_seen).days / 7
+    weeks_total = (today - first_seen).days / 7
+    times       = entry.get("timesReported", 0)
+
+    # Saturated: reported too many times in short window
+    if times >= SATURATION_COUNT and weeks_total <= SATURATION_WEEKS:
+        return True, f"saturated ({times}x in {weeks_total:.0f} weeks)"
+
+    # On cooldown: seen recently
+    if weeks_since < COOLDOWN_WEEKS:
+        # Override if score jumped significantly
+        prev_score = entry.get("lastScore", 0)
+        if new_score - prev_score >= SCORE_JUMP:
+            return False, f"cooldown override (score +{new_score - prev_score})"
+        return True, f"cooldown ({weeks_since:.1f} weeks ago, last score {prev_score})"
+
+    return False, "cooldown expired"
+
+def update_history(name: str, score: int, history: dict):
+    """Update seen entry for this trend."""
+    today = datetime.date.today().isoformat()
+    seen  = history.setdefault("seen", {})
+
+    # Find existing key (case-insensitive)
+    existing_key = None
+    for k in seen:
+        if k.lower().strip() == name.lower().strip():
+            existing_key = k
+            break
+
+    if existing_key:
+        seen[existing_key]["lastSeen"]      = today
+        seen[existing_key]["lastScore"]     = score
+        seen[existing_key]["timesReported"] = seen[existing_key].get("timesReported", 0) + 1
+    else:
+        seen[name] = {
+            "firstSeen":     today,
+            "lastSeen":      today,
+            "lastScore":     score,
+            "timesReported": 1,
+        }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # STEP 4 — SCORE + FILTER
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -399,9 +480,10 @@ def score_candidate(candidate: dict, trends_data: dict, kw_data: dict, cfg: dict
 
 def main():
     parser = argparse.ArgumentParser(description="TRENDS Research Pipeline")
-    parser.add_argument("--config",      default="config.json",       help="Path to config.json")
-    parser.add_argument("--output",      default="data/trends.json",  help="Output path")
-    parser.add_argument("--candidates",  default=None,                help="Skip Manus, load candidates JSON directly")
+    parser.add_argument("--config",      default="config.json",             help="Path to config.json")
+    parser.add_argument("--output",      default="data/trends.json",        help="Output path")
+    parser.add_argument("--history",     default="data/trends-history.json",help="History file path")
+    parser.add_argument("--candidates",  default=None,                      help="Skip Manus, load candidates JSON directly")
     args = parser.parse_args()
 
     cfg    = load_config(args.config)
@@ -411,17 +493,21 @@ def main():
 
     print(f"[TRENDS] Starting: {niche} / {market}")
 
+    # Load history
+    history = load_history(args.history)
+    print(f"[TRENDS] History: {len(history.get('seen', {}))} product types tracked")
+
     # Step 1: Manus candidates
     if args.candidates:
         print(f"[TRENDS] Loading candidates from {args.candidates}")
         with open(args.candidates) as f:
             candidates = json.load(f)
     else:
-        api_key   = cfg["manus"]["apiKey"]
-        prompt    = build_manus_prompt(cfg)
-        task_id   = submit_manus_task(api_key, prompt)
-        result    = poll_manus_task(api_key, task_id)
-        candidates = extract_candidates(result)
+        api_key    = cfg["manus"]["apiKey"]
+        prompt     = build_manus_prompt(cfg)
+        task_id    = submit_manus_task(api_key, prompt)
+        manus_result = poll_manus_task(api_key, task_id)
+        candidates = extract_candidates(manus_result)
         print(f"[TRENDS] Manus returned {len(candidates)} candidates")
 
     # Step 2: pytrends validation
@@ -437,34 +523,64 @@ def main():
     scored = []
     for c in candidates:
         result = score_candidate(c, trends_data, kw_data, cfg)
-        if result and result["score"] >= 50:
-            scored.append(result)
-        elif result:
-            print(f"[TRENDS] Dropped '{c['name']}' — score {result['score']} < 50")
-        else:
+        if not result:
             print(f"[TRENDS] Dropped '{c['name']}' — failed hard filter")
+            continue
+        if result["score"] < 50:
+            print(f"[TRENDS] Dropped '{c['name']}' — score {result['score']} < 50")
+            continue
+        scored.append(result)
 
     scored.sort(key=lambda x: x["score"], reverse=True)
-    final = scored[:10]
+
+    # Step 5: Cooldown / history filter
+    print(f"[TRENDS] Applying history cooldown...")
+    final = []
+    skipped_cooldown = []
+    for t in scored:
+        skip, reason = is_on_cooldown(t["name"], t["score"], history)
+        if skip:
+            skipped_cooldown.append((t["name"], t["score"], reason))
+            print(f"[TRENDS] Skipped '{t['name']}' ({t['score']}) — {reason}")
+        else:
+            final.append(t)
+            if reason != "new":
+                print(f"[TRENDS] Included '{t['name']}' — {reason}")
+
+    final = final[:10]
 
     if len(final) < 3:
-        print(f"[TRENDS] WARNING: Only {len(final)} trends validated")
+        print(f"[TRENDS] WARNING: Only {len(final)} trends after cooldown filter")
+        # If too few, relax cooldown and include best skipped items
+        for name, score, reason in sorted(skipped_cooldown, key=lambda x: -x[1]):
+            if len(final) >= 5:
+                break
+            if "saturated" not in reason:
+                print(f"[TRENDS] Adding '{name}' despite cooldown (too few results)")
+                match = next((t for t in scored if t["name"] == name), None)
+                if match:
+                    final.append(match)
 
-    # Build output
+    # Step 6: Update history + write output
+    for t in final:
+        update_history(t["name"], t["score"], history)
+    save_history(history, args.history)
+
     output = {
-        "generatedAt":   datetime.datetime.utcnow().isoformat() + "Z",
-        "validUntil":    (today + datetime.timedelta(days=7)).isoformat() + "T02:00:00Z",
-        "storeNiche":    niche,
-        "market":        market,
-        "trendsCount":   len(final),
-        "productTypes":  final,
+        "generatedAt":      datetime.datetime.utcnow().isoformat() + "Z",
+        "validUntil":       (today + datetime.timedelta(days=7)).isoformat() + "T02:00:00Z",
+        "storeNiche":       niche,
+        "market":           market,
+        "trendsCount":      len(final),
+        "skippedCooldown":  len(skipped_cooldown),
+        "productTypes":     final,
     }
 
     Path(args.output).parent.mkdir(parents=True, exist_ok=True)
     with open(args.output, "w") as f:
         json.dump(output, f, indent=2, ensure_ascii=False)
 
-    print(f"\n[TRENDS] Done — {len(final)} validated trends:")
+    print(f"\n[TRENDS] Done — {len(final)} validated trends ({len(skipped_cooldown)} on cooldown):")
     for t in final:
         print(f"  {t['score']:3d} — {t['name']} | {t['momentum']} | peak: {t['peakWindow']}")
 

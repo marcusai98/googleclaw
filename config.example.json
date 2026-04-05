@@ -46,7 +46,31 @@
   },
   "costs": {
     "shopifyMonthly": 39,
-    "transactionFeePercent": 2,
-    "paymentGatewayPercent": 0.5
+    "shopifyPaymentsFeePercent": 1.9,
+    "shopifyPaymentsFeeFixed": 0.25,
+    "thirdPartyGatewayFeePercent": 2.9,
+    "shopifyTransactionFeePercent": 0,
+    "defaultMarginPercent": 40
+  },
+  "cogsSheet": {
+    "spreadsheetId": "YOUR_GOOGLE_SHEET_ID",
+    "sheetUrl": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID",
+    "sheetName": "Sheet1",
+    "headerRow": 1,
+    "productIdentifierColumn": "A",
+    "cogsPriceColumn": "C",
+    "matchBy": "sku",
+    "serviceAccountFile": "service-account.json"
+  },
+  "supplier": {
+    "name": "Your Supplier Name",
+    "contact": "supplier@example.com"
+  },
+  "notifications": {
+    "telegram": {
+      "enabled": true,
+      "botToken": "YOUR_BOT_TOKEN",
+      "chatId": "YOUR_CHAT_ID"
+    }
   }
 }

@@ -215,7 +215,11 @@ def shopify_calc_day(orders: list, lookup: dict, cfg: dict,
 
             # Register new products in cache (for supplier to fill COGS)
             cache_key = sku or product_id or title
+            today_s   = datetime.date.today().isoformat()
+            review_due = (datetime.date.today() + datetime.timedelta(days=90)).isoformat()
+
             if cache_key and cache_key not in product_cache:
+                # Brand new product — register it
                 product_cache[cache_key] = {
                     "title":            title,
                     "variantTitle":     variant,
@@ -224,16 +228,40 @@ def shopify_calc_day(orders: list, lookup: dict, cfg: dict,
                     "shopifyVariantId": variant_id,
                     "cogs":             cost if match_method != "default_margin" else 0,
                     "cogsSource":       match_method,
+                    "cogsLastUpdated":  today_s,
+                    "cogsReviewDue":    review_due,
                     "supplier":         "",
                     "needsReview":      match_method == "default_margin",
-                    "firstSeen":        datetime.date.today().isoformat(),
-                    "lastSeen":         datetime.date.today().isoformat(),
+                    "firstSeen":        today_s,
+                    "lastSeen":         today_s,
                 }
                 cache_updated = True
                 if match_method == "default_margin":
                     unmatched.append(title or sku)
+
             elif cache_key in product_cache:
-                product_cache[cache_key]["lastSeen"] = datetime.date.today().isoformat()
+                entry          = product_cache[cache_key]
+                prev_last_seen = entry.get("lastSeen", "")
+                entry["lastSeen"] = today_s
+
+                # Detect reactivated product: was inactive >90 days, now selling again
+                # AND COGS review is overdue → flag immediately
+                if prev_last_seen:
+                    try:
+                        days_inactive = (datetime.date.today() -
+                                         datetime.date.fromisoformat(prev_last_seen)).days
+                        cogs_due      = entry.get("cogsReviewDue", "")
+                        if (days_inactive > 90 and cogs_due and
+                                datetime.date.fromisoformat(cogs_due) <= datetime.date.today()):
+                            entry["needsReview"] = True
+                            print(f"[MIDAS] Reactivated product needs COGS review: '{title}' "
+                                  f"(inactive {days_inactive}d)")
+                            unmatched.append(title or sku)
+                            cache_updated = True
+                    except ValueError:
+                        pass
+
+                cache_updated = True
 
             # Per-product stats
             pid = sku or product_id or title

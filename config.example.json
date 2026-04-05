@@ -1,7 +1,16 @@
 {
   "instance": {
     "name": "My Store",
-    "owner": "Your Name"
+    "owner": "Your Name",
+    "timezone": "Europe/Amsterdam"
+  },
+  "store": {
+    "niche": "women's fashion",
+    "market": "Netherlands",
+    "language": "Dutch"
+  },
+  "manus": {
+    "apiKey": "YOUR_MANUS_API_KEY"
   },
   "openclaw": {
     "gatewayUrl": "http://YOUR_VPS_IP:63783",

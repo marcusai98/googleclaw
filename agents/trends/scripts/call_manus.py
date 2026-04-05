@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """
-TRENDS — Manus AI Research Script
-Submits a trend research task to Manus and writes validated trends to trends.json.
+TRENDS — Research + Validation Pipeline
+1. Manus AI     → generates 15-20 candidate product types
+2. pytrends     → validates Google Trends curve per candidate
+3. Google Ads   → validates search volume + CPC per candidate
+4. Writes validated trends to trends.json
 
 Usage:
     python3 call_manus.py --config config.json --output data/trends.json
@@ -14,21 +17,44 @@ import datetime
 import requests
 from pathlib import Path
 
-MANUS_API_URL = "https://api.manus.ai/v1"
-POLL_INTERVAL  = 30   # seconds between status checks
-MAX_WAIT       = 3600 # max 60 minutes
+# Optional imports
+try:
+    from pytrends.request import TrendReq
+    HAS_PYTRENDS = True
+except ImportError:
+    HAS_PYTRENDS = False
+    print("[TRENDS] pytrends not installed — skipping Google Trends validation")
 
+try:
+    from google.ads.googleads.client import GoogleAdsClient
+    HAS_GOOGLE_ADS = True
+except ImportError:
+    HAS_GOOGLE_ADS = False
+    print("[TRENDS] google-ads not installed — skipping Keyword Planner validation")
+
+MANUS_API_URL = "https://api.manus.ai/v1"
+POLL_INTERVAL = 30
+MAX_WAIT      = 3600
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CONFIG
+# ─────────────────────────────────────────────────────────────────────────────
 
 def load_config(path: str) -> dict:
     with open(path) as f:
         return json.load(f)
 
 
-def build_research_prompt(cfg: dict) -> str:
-    niche   = cfg["store"]["niche"]
-    market  = cfg["store"]["market"]
-    lang    = cfg["store"].get("language", "English")
-    today   = datetime.date.today().isoformat()
+# ─────────────────────────────────────────────────────────────────────────────
+# STEP 1 — MANUS: generate candidates
+# ─────────────────────────────────────────────────────────────────────────────
+
+def build_manus_prompt(cfg: dict) -> str:
+    niche  = cfg["store"]["niche"]
+    market = cfg["store"]["market"]
+    lang   = cfg["store"].get("language", "English")
+    today  = datetime.date.today().isoformat()
 
     return f"""
 You are a product trend researcher for a dropshipping store.
@@ -40,219 +66,407 @@ Today's date: {today}
 
 ## Task
 
-Find the top trending PRODUCT TYPES within the "{niche}" niche for the {market} market.
+Generate 20 candidate trending PRODUCT TYPES within the "{niche}" niche for the {market} market.
 
-Product types should be at the right level of specificity:
-- Not too broad: "clothing" is too broad
-- Not too specific: "blue Nike polo shirt size M" is too specific
-- Just right: "polo shirt", "regenjas", "sandalen", "zwembroek"
+Product type level (not too broad, not too specific):
+- Too broad: "clothing"
+- Too specific: "blue Nike polo size M"
+- Correct: "polo shirt", "regenjas", "sandalen", "zwembroek", "jurk"
 
-## Research process
-
-### Step 1: Generate candidates
-Use these secondary sources to generate a list of candidate product types:
-- TikTok trending content in {market} related to {niche}
+## Research sources to use
+- TikTok trending content in {market} for {niche}
 - Reddit communities relevant to {niche}
-- Seasonal calendar for {market} (what's coming up in the next 1-6 months?)
-- Fashion/industry trend reports if applicable
+- Seasonal calendar for {market} — what is coming up in the next 1-6 months?
+- Fashion/trend industry reports
+- Google Shopping trending searches if available
 
-Generate 15-20 candidate product types.
+## For each candidate, provide
 
-### Step 2: Validate via Google data (REQUIRED for each candidate)
-For each candidate, check:
+Return ONLY a JSON array. No markdown, no explanation. Exactly:
 
-1. **Google Trends** — search the term in {market}:
-   - Is the trend curve rising over the past 4 weeks? (required)
-   - Is it up at least 20% year-over-year? (required)
-   - Is it a consistent trend (not a single spike)? (required)
+[
+  {{
+    "name": "Product type name in {lang}",
+    "englishName": "English translation",
+    "signals": ["TikTok NL trending", "Seasonal: autumn approaching"],
+    "estimatedPeakWindow": "Month – Month YYYY",
+    "estimatedMonthsUntilPeak": 3,
+    "category": "seasonal | evergreen | viral | emerging"
+  }}
+]
 
-2. **Google Keyword Planner data** (estimate if direct access unavailable):
-   - Monthly search volume in {market}: must be ≥ 5,000
-   - Average CPC: must be ≤ €2.00 (or local currency equivalent)
-
-3. **Seasonal timing**:
-   - Peak window must be within the next 1-5 months
-   - Too early (>5 months out): skip — too early to source
-   - Too late (<2 weeks to peak): skip — opportunity has passed
-
-### Step 3: Score each validated candidate (0-100)
-- Trend momentum (rising speed): 0-30 points
-- Monthly search volume (normalized): 0-25 points
-- Seasonal timing (how close to optimal): 0-20 points
-- Low competition (lower CPC = higher score): 0-15 points
-- Multi-platform presence: 0-10 points
-
-### Step 4: Filter and rank
-- Discard any candidate that fails Google validation criteria
-- Keep only candidates scoring ≥ 50
-- Return maximum 10, ranked by score
-
-## Required output format
-
-Return ONLY valid JSON, no markdown, no explanation. Exactly this structure:
-
-{{
-  "generatedAt": "{today}T02:00:00Z",
-  "validUntil": "{(datetime.date.today() + datetime.timedelta(days=7)).isoformat()}T02:00:00Z",
-  "storeNiche": "{niche}",
-  "market": "{market}",
-  "productTypes": [
-    {{
-      "name": "Product Type Name",
-      "momentum": "rising | accelerating | peaking | stable",
-      "peakWindow": "Month – Month YYYY",
-      "monthsUntilPeak": 3,
-      "googleTrendDirection": "rising | stable | declining",
-      "monthlySearchVolume": 22000,
-      "avgCpc": "€0.42",
-      "reason": "2-3 sentence explanation of why this is validated and timely.",
-      "score": 82
-    }}
-  ]
-}}
-
-Only return the JSON. Nothing else.
+Return exactly 20 candidates. Only the JSON array, nothing else.
 """
 
 
-def submit_task(api_key: str, prompt: str) -> str:
-    """Submit research task to Manus. Returns task_id."""
-    headers = {
-        "API_KEY": api_key,
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "input": prompt,
-        "version": "v2"
-    }
-    r = requests.post(f"{MANUS_API_URL}/tasks", json=payload, headers=headers, timeout=30)
+def submit_manus_task(api_key: str, prompt: str) -> str:
+    headers = {"API_KEY": api_key, "Content-Type": "application/json"}
+    r = requests.post(f"{MANUS_API_URL}/tasks",
+                      json={"input": prompt, "version": "v2"},
+                      headers=headers, timeout=30)
     r.raise_for_status()
     data = r.json()
     task_id = data.get("task_id") or data.get("id")
     if not task_id:
         raise ValueError(f"No task_id in Manus response: {data}")
-    print(f"[TRENDS] Task submitted: {task_id}")
+    print(f"[TRENDS] Manus task submitted: {task_id}")
     return task_id
 
 
-def poll_task(api_key: str, task_id: str) -> str:
-    """Poll Manus until task completes. Returns result text."""
+def poll_manus_task(api_key: str, task_id: str) -> str:
     headers = {"API_KEY": api_key}
     deadline = time.time() + MAX_WAIT
-
     while time.time() < deadline:
         r = requests.get(f"{MANUS_API_URL}/tasks/{task_id}", headers=headers, timeout=30)
         r.raise_for_status()
         data = r.json()
         status = data.get("status", "")
-        print(f"[TRENDS] Status: {status}")
-
+        print(f"[TRENDS] Manus status: {status}")
         if status in ("completed", "success", "done"):
-            # Extract result text
-            result = (
-                data.get("result") or
-                data.get("output") or
-                data.get("response") or
-                str(data)
-            )
-            return result
-
+            return data.get("result") or data.get("output") or data.get("response") or str(data)
         if status in ("failed", "error", "cancelled"):
             raise RuntimeError(f"Manus task failed: {data.get('error', status)}")
-
         time.sleep(POLL_INTERVAL)
+    raise TimeoutError(f"Manus task {task_id} timed out after {MAX_WAIT}s")
 
-    raise TimeoutError(f"Manus task {task_id} did not complete within {MAX_WAIT}s")
 
-
-def extract_json(text: str) -> dict:
-    """Extract JSON from Manus response (may contain surrounding text)."""
-    # Try direct parse first
+def extract_candidates(text: str) -> list:
     try:
         return json.loads(text)
     except json.JSONDecodeError:
         pass
-
-    # Find JSON block
-    start = text.find("{")
-    end   = text.rfind("}") + 1
+    start = text.find("[")
+    end   = text.rfind("]") + 1
     if start >= 0 and end > start:
         try:
             return json.loads(text[start:end])
         except json.JSONDecodeError:
             pass
-
-    raise ValueError(f"Could not extract valid JSON from Manus response:\n{text[:500]}")
-
-
-def validate_output(data: dict) -> list:
-    """Validate and filter product types. Returns only valid entries."""
-    product_types = data.get("productTypes", [])
-    valid = []
-    for pt in product_types:
-        # Must have required fields
-        if not pt.get("name") or not pt.get("score"):
-            continue
-        # Must meet minimum score
-        if pt.get("score", 0) < 50:
-            print(f"[TRENDS] Skipping '{pt['name']}' — score {pt.get('score')} < 50")
-            continue
-        # Must not be declining
-        if pt.get("googleTrendDirection") == "declining":
-            print(f"[TRENDS] Skipping '{pt['name']}' — Google trend declining")
-            continue
-        valid.append(pt)
-
-    # Sort by score descending, cap at 10
-    valid.sort(key=lambda x: x.get("score", 0), reverse=True)
-    return valid[:10]
+    raise ValueError(f"Could not extract JSON array from Manus response:\n{text[:500]}")
 
 
-def main():
-    parser = argparse.ArgumentParser(description="TRENDS — Manus AI Research")
-    parser.add_argument("--config", default="config.json",      help="Path to config.json")
-    parser.add_argument("--output", default="data/trends.json", help="Path to trends.json")
-    args = parser.parse_args()
+# ─────────────────────────────────────────────────────────────────────────────
+# STEP 2 — PYTRENDS: validate Google Trends curve
+# ─────────────────────────────────────────────────────────────────────────────
 
-    cfg     = load_config(args.config)
-    api_key = cfg["manus"]["apiKey"]
+# Google Trends geo codes
+GEO_MAP = {
+    "Netherlands": "NL", "Germany": "DE", "Belgium": "BE",
+    "France": "FR", "United Kingdom": "GB", "United States": "US",
+    "Spain": "ES", "Italy": "IT", "Poland": "PL", "Portugal": "PT",
+}
 
-    print(f"[TRENDS] Starting research for: {cfg['store']['niche']} / {cfg['store']['market']}")
+def pytrends_validate(candidates: list, market: str) -> dict:
+    """
+    Returns dict: {candidate_name: {rising: bool, yoy_growth: float, consistent: bool}}
+    """
+    if not HAS_PYTRENDS:
+        return {c["name"]: {"rising": True, "yoy_growth": 0, "consistent": True, "skipped": True}
+                for c in candidates}
 
-    # Build prompt
-    prompt = build_research_prompt(cfg)
+    geo  = GEO_MAP.get(market, "")
+    pytr = TrendReq(hl="en-US", tz=60)
+    results = {}
 
-    # Submit to Manus
-    task_id = submit_task(api_key, prompt)
+    # Process in batches of 5 (pytrends limit)
+    for i in range(0, len(candidates), 5):
+        batch = candidates[i:i+5]
+        terms = [c.get("englishName", c["name"]) for c in batch]
+        try:
+            pytr.build_payload(terms, timeframe="today 12-m", geo=geo)
+            df = pytr.interest_over_time()
+            if df.empty:
+                for c in batch:
+                    results[c["name"]] = {"rising": False, "yoy_growth": 0, "consistent": False}
+                continue
 
-    # Poll for result
-    result_text = poll_task(api_key, task_id)
+            for c, term in zip(batch, terms):
+                if term not in df.columns:
+                    results[c["name"]] = {"rising": False, "yoy_growth": 0, "consistent": False}
+                    continue
 
-    # Parse and validate
-    raw_data = extract_json(result_text)
-    validated = validate_output(raw_data)
+                series = df[term].values
+                n = len(series)
+                if n < 8:
+                    results[c["name"]] = {"rising": False, "yoy_growth": 0, "consistent": False}
+                    continue
 
-    if len(validated) < 3:
-        print(f"[TRENDS] WARNING: Only {len(validated)} trends validated (minimum 3 recommended)")
+                # Rising: last 4 weeks avg > previous 4 weeks avg
+                recent = series[-4:].mean()
+                prev   = series[-8:-4].mean()
+                rising = recent > prev * 1.05  # at least 5% higher
 
-    # Build final output
-    output = {
-        "generatedAt":   raw_data.get("generatedAt", datetime.datetime.utcnow().isoformat() + "Z"),
-        "validUntil":    raw_data.get("validUntil"),
-        "storeNiche":    cfg["store"]["niche"],
-        "market":        cfg["store"]["market"],
-        "trendsCount":   len(validated),
-        "productTypes":  validated,
+                # YoY growth: last month vs same month last year
+                last_month  = series[-4:].mean()
+                year_ago    = series[:4].mean()
+                yoy = ((last_month - year_ago) / year_ago * 100) if year_ago > 0 else 0
+
+                # Consistent: not a single spike (std/mean ratio)
+                mean = series[-12:].mean()
+                std  = series[-12:].std()
+                consistent = (std / mean < 1.5) if mean > 0 else False
+
+                results[c["name"]] = {
+                    "rising": bool(rising),
+                    "yoy_growth": round(float(yoy), 1),
+                    "consistent": bool(consistent),
+                    "recent_avg": round(float(recent), 1),
+                }
+                print(f"[TRENDS] pytrends '{term}': rising={rising}, yoy={yoy:.0f}%, consistent={consistent}")
+
+        except Exception as e:
+            print(f"[TRENDS] pytrends batch error: {e}")
+            for c in batch:
+                results[c["name"]] = {"rising": True, "yoy_growth": 0, "consistent": True, "error": str(e)}
+
+        time.sleep(2)  # rate limit
+
+    return results
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STEP 3 — GOOGLE ADS: search volume + CPC via Keyword Planner
+# ─────────────────────────────────────────────────────────────────────────────
+
+LANGUAGE_CODES = {
+    "Dutch": "1010", "German": "1001", "French": "1002",
+    "English": "1000", "Spanish": "1003", "Italian": "1004",
+}
+
+LOCATION_CODES = {
+    "Netherlands": "2528", "Germany": "2276", "Belgium": "2056",
+    "France": "2250", "United Kingdom": "2826", "United States": "2840",
+}
+
+def google_ads_keyword_data(candidates: list, cfg: dict) -> dict:
+    """
+    Returns dict: {candidate_name: {monthly_volume: int, avg_cpc: float}}
+    """
+    if not HAS_GOOGLE_ADS:
+        return {c["name"]: {"monthly_volume": 0, "avg_cpc": 0, "skipped": True}
+                for c in candidates}
+
+    ga_cfg = cfg["googleAds"]
+    market = cfg["store"]["market"]
+    lang   = cfg["store"].get("language", "English")
+
+    try:
+        client = GoogleAdsClient.load_from_dict({
+            "developer_token": ga_cfg["developerToken"],
+            "client_id":       ga_cfg["clientId"],
+            "client_secret":   ga_cfg["clientSecret"],
+            "refresh_token":   ga_cfg["refreshToken"],
+            "use_proto_plus":  True,
+        })
+        customer_id = ga_cfg["customerId"].replace("-", "")
+        kp_service  = client.get_service("KeywordPlanIdeaService")
+
+        results = {}
+        for c in candidates:
+            term = c.get("englishName", c["name"])
+            try:
+                request = client.get_type("GenerateKeywordIdeasRequest")
+                request.customer_id = customer_id
+                request.keyword_seed.keywords.append(term)
+                request.geo_target_constants.append(
+                    f"geoTargetConstants/{LOCATION_CODES.get(market, '2528')}"
+                )
+                request.language = f"languageConstants/{LANGUAGE_CODES.get(lang, '1010')}"
+
+                response = kp_service.generate_keyword_ideas(request=request)
+                # Take the first (exact match) result
+                for idea in response:
+                    kw = idea.text
+                    if kw.lower() == term.lower():
+                        vol = idea.keyword_idea_metrics.avg_monthly_searches
+                        cpc = idea.keyword_idea_metrics.average_cpc_micros / 1_000_000
+                        results[c["name"]] = {
+                            "monthly_volume": int(vol),
+                            "avg_cpc": round(float(cpc), 2),
+                        }
+                        print(f"[TRENDS] KW '{term}': vol={vol}, cpc=€{cpc:.2f}")
+                        break
+                else:
+                    results[c["name"]] = {"monthly_volume": 0, "avg_cpc": 0}
+            except Exception as e:
+                print(f"[TRENDS] KW Planner error for '{term}': {e}")
+                results[c["name"]] = {"monthly_volume": 0, "avg_cpc": 0, "error": str(e)}
+
+        return results
+
+    except Exception as e:
+        print(f"[TRENDS] Google Ads connection error: {e}")
+        return {c["name"]: {"monthly_volume": 0, "avg_cpc": 0, "error": str(e)}
+                for c in candidates}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STEP 4 — SCORE + FILTER
+# ─────────────────────────────────────────────────────────────────────────────
+
+def score_candidate(candidate: dict, trends_data: dict, kw_data: dict, cfg: dict) -> dict:
+    name     = candidate["name"]
+    td       = trends_data.get(name, {})
+    kw       = kw_data.get(name, {})
+
+    # Hard filters
+    min_volume = cfg.get("thresholds", {}).get("minMonthlySearchVolume", 5000)
+    max_cpc    = cfg.get("thresholds", {}).get("maxCpc", 2.0)
+
+    rising     = td.get("rising", True)
+    consistent = td.get("consistent", True)
+    volume     = kw.get("monthly_volume", 0)
+    cpc        = kw.get("avg_cpc", 0)
+    yoy        = td.get("yoy_growth", 0)
+
+    # Skip if clearly bad (unless data was skipped/missing)
+    skipped = td.get("skipped") or kw.get("skipped")
+    if not skipped:
+        if not rising:
+            return None
+        if volume > 0 and volume < min_volume:
+            return None
+        if cpc > 0 and cpc > max_cpc:
+            return None
+        if yoy < -20:  # actively declining YoY
+            return None
+
+    # Scoring
+    months_to_peak = candidate.get("estimatedMonthsUntilPeak", 3)
+
+    # Trend momentum (0-30)
+    trend_score = 0
+    if rising:          trend_score += 15
+    if consistent:      trend_score += 10
+    if yoy >= 50:       trend_score += 5
+    elif yoy >= 20:     trend_score += 3
+
+    # Volume (0-25)
+    if   volume >= 50000: vol_score = 25
+    elif volume >= 20000: vol_score = 20
+    elif volume >= 10000: vol_score = 15
+    elif volume >= 5000:  vol_score = 10
+    else:                 vol_score = 5 if skipped else 0
+
+    # Timing (0-20) — sweet spot is 2-4 months away
+    if   1 <= months_to_peak <= 2:  timing_score = 15
+    elif 2 < months_to_peak <= 4:   timing_score = 20
+    elif 4 < months_to_peak <= 6:   timing_score = 10
+    else:                            timing_score = 3
+
+    # CPC / competition (0-15) — lower CPC = less competition = better
+    if   cpc == 0:        cpc_score = 8  # unknown
+    elif cpc <= 0.30:     cpc_score = 15
+    elif cpc <= 0.60:     cpc_score = 12
+    elif cpc <= 1.00:     cpc_score = 9
+    elif cpc <= 1.50:     cpc_score = 6
+    elif cpc <= 2.00:     cpc_score = 3
+    else:                 cpc_score = 0
+
+    # Signals (0-10)
+    signals    = candidate.get("signals", [])
+    sig_score  = min(10, len(signals) * 3)
+
+    total = trend_score + vol_score + timing_score + cpc_score + sig_score
+
+    # Momentum label
+    if yoy >= 50 or (rising and months_to_peak <= 2):
+        momentum = "accelerating"
+    elif rising:
+        momentum = "rising"
+    else:
+        momentum = "stable"
+
+    return {
+        "name":                  name,
+        "momentum":              momentum,
+        "peakWindow":            candidate.get("estimatedPeakWindow", ""),
+        "monthsUntilPeak":       months_to_peak,
+        "googleTrendDirection":  "rising" if rising else "stable",
+        "yoyGrowth":             f"+{yoy:.0f}%" if yoy >= 0 else f"{yoy:.0f}%",
+        "monthlySearchVolume":   volume,
+        "avgCpc":                f"€{cpc:.2f}" if cpc > 0 else "unknown",
+        "signals":               signals,
+        "reason":                f"{', '.join(signals[:2])}. YoY growth: {yoy:.0f}%. "
+                                 f"Peak expected: {candidate.get('estimatedPeakWindow', '?')}.",
+        "score":                 min(100, total),
     }
 
-    # Write output
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MAIN
+# ─────────────────────────────────────────────────────────────────────────────
+
+def main():
+    parser = argparse.ArgumentParser(description="TRENDS Research Pipeline")
+    parser.add_argument("--config",      default="config.json",       help="Path to config.json")
+    parser.add_argument("--output",      default="data/trends.json",  help="Output path")
+    parser.add_argument("--candidates",  default=None,                help="Skip Manus, load candidates JSON directly")
+    args = parser.parse_args()
+
+    cfg    = load_config(args.config)
+    niche  = cfg["store"]["niche"]
+    market = cfg["store"]["market"]
+    today  = datetime.date.today()
+
+    print(f"[TRENDS] Starting: {niche} / {market}")
+
+    # Step 1: Manus candidates
+    if args.candidates:
+        print(f"[TRENDS] Loading candidates from {args.candidates}")
+        with open(args.candidates) as f:
+            candidates = json.load(f)
+    else:
+        api_key   = cfg["manus"]["apiKey"]
+        prompt    = build_manus_prompt(cfg)
+        task_id   = submit_manus_task(api_key, prompt)
+        result    = poll_manus_task(api_key, task_id)
+        candidates = extract_candidates(result)
+        print(f"[TRENDS] Manus returned {len(candidates)} candidates")
+
+    # Step 2: pytrends validation
+    print(f"[TRENDS] Running pytrends validation...")
+    trends_data = pytrends_validate(candidates, market)
+
+    # Step 3: Google Ads keyword data
+    print(f"[TRENDS] Fetching Keyword Planner data...")
+    kw_data = google_ads_keyword_data(candidates, cfg)
+
+    # Step 4: Score + filter
+    print(f"[TRENDS] Scoring and filtering...")
+    scored = []
+    for c in candidates:
+        result = score_candidate(c, trends_data, kw_data, cfg)
+        if result and result["score"] >= 50:
+            scored.append(result)
+        elif result:
+            print(f"[TRENDS] Dropped '{c['name']}' — score {result['score']} < 50")
+        else:
+            print(f"[TRENDS] Dropped '{c['name']}' — failed hard filter")
+
+    scored.sort(key=lambda x: x["score"], reverse=True)
+    final = scored[:10]
+
+    if len(final) < 3:
+        print(f"[TRENDS] WARNING: Only {len(final)} trends validated")
+
+    # Build output
+    output = {
+        "generatedAt":   datetime.datetime.utcnow().isoformat() + "Z",
+        "validUntil":    (today + datetime.timedelta(days=7)).isoformat() + "T02:00:00Z",
+        "storeNiche":    niche,
+        "market":        market,
+        "trendsCount":   len(final),
+        "productTypes":  final,
+    }
+
     Path(args.output).parent.mkdir(parents=True, exist_ok=True)
     with open(args.output, "w") as f:
         json.dump(output, f, indent=2, ensure_ascii=False)
 
-    print(f"[TRENDS] Done — {len(validated)} validated trends written to {args.output}")
-    for pt in validated:
-        print(f"  {pt['score']:3d} — {pt['name']} ({pt.get('peakWindow', '?')})")
+    print(f"\n[TRENDS] Done — {len(final)} validated trends:")
+    for t in final:
+        print(f"  {t['score']:3d} — {t['name']} | {t['momentum']} | peak: {t['peakWindow']}")
 
 
 if __name__ == "__main__":

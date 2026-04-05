@@ -1,7 +1,7 @@
 # SCOUT — Daily Product Research Cron
 
 > Model: GPT (openai/gpt-4o-mini)
-> Schedule: Daily at 06:30 (after TRENDS at 06:00)
+> Schedule: Daily at 07:00 (1 hour after TRENDS at 06:00)
 > Trigger: Cron
 
 ---

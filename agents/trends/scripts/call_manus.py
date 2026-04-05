@@ -465,7 +465,7 @@ def score_candidate(candidate: dict, trends_data: dict, kw_data: dict, cfg: dict
     cpc        = kw.get("avg_cpc", 0)
     yoy        = td.get("yoy_growth", 0)
 
-    # Skip if clearly bad (unless data was skipped/missing)
+    # Hard filters (unless data was skipped/missing)
     skipped = td.get("skipped") or kw.get("skipped")
     if not skipped:
         if not rising:
@@ -474,18 +474,19 @@ def score_candidate(candidate: dict, trends_data: dict, kw_data: dict, cfg: dict
             return None
         if cpc > 0 and cpc > max_cpc:
             return None
-        if yoy < -20:  # actively declining YoY
+        if yoy < -30:  # only discard if actively collapsing YoY
             return None
+        # Note: no minimum YoY growth required — rising trend is enough
 
     # Scoring
     months_to_peak = candidate.get("estimatedMonthsUntilPeak", 3)
 
     # Trend momentum (0-30)
     trend_score = 0
-    if rising:          trend_score += 15
+    if rising:          trend_score += 18
     if consistent:      trend_score += 10
-    if yoy >= 50:       trend_score += 5
-    elif yoy >= 20:     trend_score += 3
+    if yoy >= 50:       trend_score += 2    # bonus for strong YoY — not required
+    if yoy < -30:       trend_score -= 5   # penalty for collapsing
 
     # Volume (0-25)
     if   volume >= 50000: vol_score = 25

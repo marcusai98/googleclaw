@@ -1,0 +1,6 @@
+config.json
+agents/*/memory/state.md
+agents/*/memory/learnings.md
+*.pyc
+__pycache__/
+.env

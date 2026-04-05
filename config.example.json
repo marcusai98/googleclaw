@@ -1,0 +1,43 @@
+{
+  "instance": {
+    "name": "My Store",
+    "owner": "Your Name"
+  },
+  "openclaw": {
+    "gatewayUrl": "http://YOUR_VPS_IP:63783",
+    "gatewayToken": "YOUR_GATEWAY_TOKEN"
+  },
+  "shopify": {
+    "storeDomain": "your-store.myshopify.com",
+    "accessToken": "YOUR_SHOPIFY_ADMIN_TOKEN"
+  },
+  "googleAds": {
+    "customerId": "YOUR_CUSTOMER_ID",
+    "developerToken": "YOUR_DEVELOPER_TOKEN",
+    "clientId": "YOUR_CLIENT_ID",
+    "clientSecret": "YOUR_CLIENT_SECRET",
+    "refreshToken": "YOUR_REFRESH_TOKEN"
+  },
+  "openai": {
+    "apiKey": "YOUR_OPENAI_API_KEY"
+  },
+  "anthropic": {
+    "apiKey": "YOUR_ANTHROPIC_API_KEY"
+  },
+  "gemini": {
+    "apiKey": "YOUR_GEMINI_API_KEY"
+  },
+  "thresholds": {
+    "scaleTriggerRoas": 3.0,
+    "alertTriggerRoas": 1.0,
+    "alertAfterDays": 3,
+    "scoutAutoPublishScore": 75,
+    "scoutInboxMinScore": 60,
+    "scoutDailyLimit": 10
+  },
+  "costs": {
+    "shopifyMonthly": 39,
+    "transactionFeePercent": 2,
+    "paymentGatewayPercent": 0.5
+  }
+}

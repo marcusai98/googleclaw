@@ -1,0 +1,1152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GoogleClaw</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#080C09; --bg2:#0C1210; --card:#111711; --card2:#181F19;
+  --line:rgba(255,255,255,0.07); --line2:rgba(255,255,255,0.04);
+  --green:#00C96B; --g2:rgba(0,201,107,0.12); --g3:rgba(0,201,107,0.06);
+  --yellow:#FBBC04; --y2:rgba(251,188,4,0.12);
+  --red:#FF453A; --r2:rgba(255,69,58,0.12);
+  --blue:#4285F4; --b2:rgba(66,133,244,0.12);
+  --purple:#A78BFA; --p2:rgba(167,139,250,0.12);
+  --t1:#fff; --t2:rgba(255,255,255,0.5); --t3:rgba(255,255,255,0.22);
+  --sidebar:220px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;background:var(--bg);color:var(--t1);font-family:'Inter',sans-serif;overflow:hidden;}
+
+/* ── LAYOUT ── */
+.app{display:flex;height:100vh;overflow:hidden;}
+
+/* ── SIDEBAR ── */
+.sidebar{
+  width:var(--sidebar);flex-shrink:0;
+  background:var(--bg2);border-right:1px solid var(--line);
+  display:flex;flex-direction:column;height:100vh;overflow:hidden;
+}
+.sb-logo{display:flex;align-items:center;gap:9px;padding:20px 16px 16px;}
+.sb-mark{width:30px;height:30px;border-radius:9px;background:var(--green);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
+.sb-name{font-size:15px;font-weight:900;letter-spacing:-.3px;}
+.sb-name span{color:var(--green);}
+.sb-store{margin:0 10px 14px;display:flex;align-items:center;gap:7px;padding:8px 10px;background:var(--card);border:1px solid var(--line);border-radius:10px;cursor:pointer;}
+.sb-store-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.sb-store-name{font-size:12px;font-weight:600;color:var(--t2);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sb-nav{flex:1;padding:4px 8px;display:flex;flex-direction:column;gap:2px;}
+.sb-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:9px;cursor:pointer;font-size:13px;font-weight:600;color:var(--t2);position:relative;transition:background .12s,color .12s;}
+.sb-item:hover{background:var(--card);color:var(--t1);}
+.sb-item.active{background:var(--g2);color:var(--green);}
+.sb-item.active .sb-ico{opacity:1;}
+.sb-ico{font-size:16px;line-height:1;opacity:.45;}
+.sb-item.active .sb-ico{opacity:1;}
+.sb-bdg{margin-left:auto;min-width:18px;height:18px;border-radius:9px;background:var(--yellow);color:#080C09;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;padding:0 5px;}
+.sb-bdg.red{background:var(--red);}
+.sb-section{font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:1px;padding:12px 10px 4px;}
+.sb-bottom{padding:12px;border-top:1px solid var(--line);display:flex;align-items:center;gap:9px;}
+.sb-av{width:30px;height:30px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:#080C09;flex-shrink:0;}
+.sb-user{flex:1;}
+.sb-user-name{font-size:12px;font-weight:700;}
+.sb-user-status{font-size:10px;color:var(--t3);display:flex;align-items:center;gap:4px;margin-top:1px;}
+.online-dot{width:6px;height:6px;border-radius:50%;background:var(--green);}
+
+/* ── MAIN ── */
+.main{flex:1;overflow:hidden;display:flex;flex-direction:column;}
+.main-header{padding:18px 24px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.mh-title{font-size:20px;font-weight:900;letter-spacing:-.4px;}
+.mh-sub{font-size:12px;color:var(--t2);margin-top:2px;}
+.mh-right{display:flex;align-items:center;gap:10px;}
+.icon-btn{width:34px;height:34px;border-radius:50%;background:var(--card);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;position:relative;}
+.notif-dot{position:absolute;top:4px;right:4px;width:7px;height:7px;border-radius:50%;background:var(--red);border:1.5px solid var(--bg2);}
+
+/* ── VIEWS ── */
+.view{display:none;flex:1;overflow:hidden;}
+.view.active{display:flex;flex-direction:column;}
+
+/* ── SCROLL CONTENT ── */
+.scroll{overflow-y:auto;overflow-x:hidden;padding:20px 24px 32px;}
+.scroll::-webkit-scrollbar{width:4px;}
+.scroll::-webkit-scrollbar-track{background:transparent;}
+.scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:2px;}
+
+/* ── HOME ── */
+.home-grid{display:grid;grid-template-columns:1fr 320px;gap:20px;align-items:start;}
+@media(max-width:1100px){.home-grid{grid-template-columns:1fr 280px;}}
+
+/* ── STAT CARDS ── */
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0;}
+.stat-c{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;}
+.sc-l{font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;}
+.sc-v{font-size:22px;font-weight:900;letter-spacing:-.8px;line-height:1;}
+.sc-d{font-size:11px;color:var(--t2);margin-top:4px;}
+
+/* ── SECTION HEADER ── */
+.sec{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.sec-t{font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:1px;}
+.sec-a{font-size:12px;color:var(--green);font-weight:700;cursor:pointer;}
+
+/* ── CARD BASE ── */
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;}
+
+/* ── CHART ── */
+.chart-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:14px;}
+.cc-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;}
+.cc-lbl{font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:3px;}
+.cc-val{font-size:24px;font-weight:900;line-height:1;}
+.cc-btns{display:flex;gap:4px;margin-top:2px;}
+.hc-btn{padding:4px 10px;border-radius:7px;font-size:10px;font-weight:800;cursor:pointer;border:1px solid var(--line);background:transparent;color:var(--t3);font-family:inherit;transition:all .12s;}
+.hc-btn.active{border-color:rgba(0,201,107,.35);background:var(--g2);color:var(--green);}
+
+/* ── QUEUE ROWS ── */
+.queue-card{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:10px;}
+.q-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line2);cursor:pointer;transition:background .1s;}
+.q-row:last-child{border-bottom:none;}
+.q-row:hover{background:var(--card2);}
+.q-ico{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+.q-body{flex:1;min-width:0;}
+.q-title{font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.q-sub{font-size:10px;color:var(--t2);margin-top:1px;}
+.q-badge{padding:2px 7px;border-radius:5px;font-size:9px;font-weight:800;flex-shrink:0;}
+.q-count{font-size:11px;font-weight:800;padding:2px 7px;border-radius:6px;flex-shrink:0;}
+
+/* ── FEED ── */
+.feed-item{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line2);}
+.feed-item:last-child{border-bottom:none;}
+.feed-ico{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;margin-top:1px;}
+.feed-agent{font-size:9px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;margin-bottom:2px;}
+.feed-msg{font-size:11.5px;color:var(--t2);line-height:1.4;}
+.feed-time{font-size:9px;color:var(--t3);flex-shrink:0;padding-top:2px;}
+
+/* ── PUBLISHED ── */
+.pub-row{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line2);}
+.pub-row:last-child{border-bottom:none;}
+.pub-ico{width:26px;height:26px;border-radius:7px;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;}
+.pub-name{flex:1;font-size:11.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pub-tag{padding:2px 6px;border-radius:5px;font-size:9px;font-weight:700;background:var(--g2);color:var(--green);}
+
+/* ── CONNECTIONS ── */
+.conn-row{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line2);font-size:11.5px;}
+.conn-row:last-child{border-bottom:none;}
+.cdot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+
+/* ── INBOX ── */
+.inbox-layout{display:flex;flex:1;overflow:hidden;}
+.inbox-list{width:320px;flex-shrink:0;border-right:1px solid var(--line);overflow-y:auto;overflow-x:hidden;}
+.inbox-list::-webkit-scrollbar{width:3px;}
+.inbox-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.06);border-radius:2px;}
+.il-header{padding:14px 16px 10px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;}
+.il-title{font-size:14px;font-weight:900;}
+.il-count{font-size:11px;color:var(--t2);}
+.il-item{display:flex;align-items:flex-start;gap:10px;padding:11px 14px;border-bottom:1px solid var(--line2);cursor:pointer;transition:background .1s;position:relative;}
+.il-item:hover{background:var(--card2);}
+.il-item.selected{background:var(--g3);border-left:3px solid var(--green);}
+.il-item.selected.alert-sel{background:rgba(255,69,58,.04);border-left-color:var(--red);}
+.il-item.done{opacity:.35;pointer-events:none;}
+.il-ico{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;margin-top:1px;}
+.il-body{flex:1;min-width:0;}
+.il-title2{font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.il-sub{font-size:10px;color:var(--t2);margin-top:2px;line-height:1.4;}
+.il-badge{padding:2px 6px;border-radius:5px;font-size:9px;font-weight:800;margin-top:4px;display:inline-block;}
+
+/* Detail panel */
+.inbox-detail{flex:1;overflow:hidden;display:flex;flex-direction:column;}
+.id-scroll{flex:1;overflow-y:auto;padding:24px;}
+.id-scroll::-webkit-scrollbar{width:4px;}
+.id-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.07);border-radius:2px;}
+.id-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:10px;color:var(--t2);}
+.id-zero{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:12px;}
+
+/* Action bar */
+.action-bar{padding:16px 24px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;background:var(--bg2);flex-shrink:0;}
+.btn-approve{flex:1;padding:12px;border-radius:10px;background:var(--green);color:#080C09;font-size:14px;font-weight:800;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;transition:opacity .12s;}
+.btn-approve:hover{opacity:.9;}
+.btn-decline{width:130px;padding:12px;border-radius:10px;background:transparent;color:var(--red);font-size:14px;font-weight:700;border:1px solid rgba(255,69,58,.3);cursor:pointer;transition:background .12s;}
+.btn-decline:hover{background:var(--r2);}
+.btn-disabled{opacity:.35;pointer-events:none;}
+
+/* Detail content blocks */
+.det-agent-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:8px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px;}
+.det-title{font-size:22px;font-weight:900;letter-spacing:-.4px;margin-bottom:4px;}
+.det-sub{font-size:13px;color:var(--t2);margin-bottom:18px;}
+.det-nums{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;}
+.det-num{background:var(--card2);border-radius:11px;padding:12px 10px;text-align:center;}
+.dn-l{font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;}
+.dn-v{font-size:18px;font-weight:900;}
+.det-img{width:100%;max-height:220px;object-fit:cover;border-radius:12px;margin-bottom:16px;}
+.det-box{background:var(--card2);border-radius:11px;padding:12px 14px;margin-bottom:12px;font-size:12px;color:var(--t2);line-height:1.7;}
+.det-box strong{color:var(--t1);}
+.det-divider{height:1px;background:var(--line);margin:16px 0;}
+
+/* Tags */
+.tag{display:inline-flex;align-items:center;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700;}
+.tag-g{background:var(--g2);color:var(--green);}
+.tag-y{background:var(--y2);color:var(--yellow);}
+.tag-r{background:var(--r2);color:var(--red);}
+.tag-b{background:var(--b2);color:var(--blue);}
+.tag-p{background:var(--p2);color:var(--purple);}
+
+/* ── ANALYTICS ── */
+.analytics-stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px;}
+.an-card{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:16px;}
+.an-l{font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;}
+.an-v{font-size:26px;font-weight:900;letter-spacing:-.8px;line-height:1;}
+.an-d{font-size:11px;color:var(--t2);margin-top:5px;}
+.analytics-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.fin-row{display:flex;justify-content:space-between;align-items:center;padding:11px 14px;border-bottom:1px solid var(--line2);font-size:12px;}
+.fin-row:last-child{border-bottom:none;}
+.fin-l{color:var(--t2);}
+.fin-v{font-weight:700;}
+.fin-total{padding:13px 14px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid rgba(255,255,255,.1);}
+.bar-wrap{display:flex;align-items:center;gap:8px;}
+.bar-track{flex:1;height:4px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:2px;}
+
+/* ── AGENTS ── */
+.agents-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;}
+.agent-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;align-items:center;gap:13px;}
+.ag-ico{width:44px;height:44px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
+.ag-body{flex:1;min-width:0;}
+.ag-name{font-size:14px;font-weight:900;}
+.ag-status{font-size:11px;color:var(--t2);margin-top:2px;display:flex;align-items:center;gap:5px;}
+.ag-last{font-size:10px;color:var(--t3);margin-top:4px;}
+.ag-right{text-align:right;flex-shrink:0;}
+.ag-stat{font-size:20px;font-weight:900;}
+.ag-stat-l{font-size:9px;color:var(--t3);margin-top:1px;}
+.dot{display:inline-block;width:6px;height:6px;border-radius:50%;}
+
+/* ── TREND SPARKLINE ── */
+.spark{display:flex;align-items:flex-end;gap:2px;height:26px;}
+.spark-bar{flex:1;border-radius:2px 2px 0 0;min-width:3px;}
+
+/* ── TOGGLE ── */
+.toggle{width:38px;height:22px;border-radius:11px;background:rgba(255,255,255,.1);border:1px solid var(--line);cursor:pointer;position:relative;transition:background .2s;flex-shrink:0;}
+.toggle::after{content:'';position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:2px;left:2px;transition:transform .2s;}
+.toggle.active{background:var(--green);border-color:var(--green);}
+.toggle.active::after{transform:translateX(16px);}
+
+/* ── FADE ANIMATION ── */
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.view.active{animation:fadeIn .15s ease;}
+
+/* ── SCORE BADGE ── */
+.score-badge{display:flex;flex-direction:column;align-items:center;justify-content:center;width:46px;height:46px;border-radius:50%;border:2px solid rgba(255,255,255,.1);background:rgba(0,0,0,.4);flex-shrink:0;}
+.sb-score-v{font-size:14px;font-weight:900;line-height:1;}
+.sb-score-l{font-size:8px;color:var(--t3);}
+
+/* ── INBOX EMPTY ── */
+.inbox-zero{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:12px;color:var(--t2);text-align:center;padding:40px;}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ═══ SIDEBAR ═══ -->
+<div class="sidebar">
+  <div class="sb-logo">
+    <div class="sb-mark">🦞</div>
+    <div class="sb-name">Google<span>Claw</span></div>
+  </div>
+
+  <!-- Store selector -->
+  <div class="sb-store" onclick="toggleStoreMenu(this)">
+    <div class="sb-store-dot" id="sbDot" style="background:var(--green)"></div>
+    <div class="sb-store-name" id="sbStoreName">My Dropshipping Store</div>
+    <span style="font-size:9px;color:var(--t3)">▾</span>
+  </div>
+
+  <!-- Nav -->
+  <div class="sb-nav">
+    <div class="sb-item active" id="ni-home" onclick="nav('home')">
+      <span class="sb-ico">⊞</span> Home
+    </div>
+    <div class="sb-item" id="ni-inbox" onclick="nav('inbox')">
+      <span class="sb-ico">📬</span> Inbox
+      <span class="sb-bdg" id="inbox-bdg">7</span>
+    </div>
+    <div class="sb-item" id="ni-analytics" onclick="nav('analytics')">
+      <span class="sb-ico">📊</span> Analytics
+    </div>
+    <div class="sb-item" id="ni-agents" onclick="nav('agents')">
+      <span class="sb-ico">🤖</span> Agents
+      <span class="sb-bdg red">2</span>
+    </div>
+    <div class="sb-item" id="ni-settings" onclick="nav('settings')" style="margin-top:auto">
+      <span class="sb-ico">⚙️</span> Settings
+    </div>
+  </div>
+
+  <!-- Bottom user -->
+  <div class="sb-bottom">
+    <div class="sb-av">H</div>
+    <div class="sb-user">
+      <div class="sb-user-name">Henk</div>
+      <div class="sb-user-status"><div class="online-dot"></div> Online</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MAIN ═══ -->
+<div class="main">
+
+  <!-- ─ HOME ─ -->
+  <div class="view active" id="v-home">
+    <div class="main-header">
+      <div>
+        <div class="mh-title">Good morning 👋</div>
+        <div class="mh-sub">Your agents worked while you slept. 7 items need your decision.</div>
+      </div>
+      <div class="mh-right">
+        <div class="icon-btn">🔔<div class="notif-dot"></div></div>
+      </div>
+    </div>
+    <div class="scroll" style="flex:1">
+      <div class="home-grid">
+
+        <!-- LEFT COL -->
+        <div>
+          <!-- 7-day chart -->
+          <div class="chart-card">
+            <div class="cc-top">
+              <div>
+                <div class="cc-lbl" id="hc-label">Revenue — 7 days</div>
+                <div class="cc-val" id="hc-val" style="color:var(--green)">€1,842</div>
+              </div>
+              <div class="cc-btns">
+                <button class="hc-btn active" onclick="hcSwitch('rev',this)">Revenue</button>
+                <button class="hc-btn" onclick="hcSwitch('roas',this)">ROAS</button>
+                <button class="hc-btn" onclick="hcSwitch('profit',this)">Profit</button>
+              </div>
+            </div>
+            <canvas id="hc-canvas" style="width:100%;height:80px;display:block"></canvas>
+            <div style="display:flex;justify-content:space-between;margin-top:6px">
+              <span style="font-size:9px;color:var(--t3)">Mon</span>
+              <span style="font-size:9px;color:var(--t3)">Tue</span>
+              <span style="font-size:9px;color:var(--t3)">Wed</span>
+              <span style="font-size:9px;color:var(--t3)">Thu</span>
+              <span style="font-size:9px;color:var(--t3)">Fri</span>
+              <span style="font-size:9px;color:var(--t3)">Sat</span>
+              <span style="font-size:9px;color:var(--green);font-weight:700">Today</span>
+            </div>
+          </div>
+
+          <!-- Stat row -->
+          <div class="stat-row">
+            <div class="stat-c"><div class="sc-l">Revenue</div><div class="sc-v" style="color:var(--green)">€1,842</div><div class="sc-d">↑ 12% vs yesterday</div></div>
+            <div class="stat-c"><div class="sc-l">Ad Spend</div><div class="sc-v">€620</div><div class="sc-d">↑ 4%</div></div>
+            <div class="stat-c"><div class="sc-l">ROAS</div><div class="sc-v" style="color:var(--green)">2.97x</div><div class="sc-d">Target: 3.0x</div></div>
+            <div class="stat-c"><div class="sc-l">Net Profit</div><div class="sc-v" style="color:var(--green)">€381</div><div class="sc-d">20.7% margin</div></div>
+          </div>
+
+          <!-- Queue summary -->
+          <div class="sec" style="margin-top:6px">
+            <div class="sec-t">Needs your decision</div>
+            <div class="sec-a" onclick="nav('inbox')">Open inbox →</div>
+          </div>
+          <div class="queue-card">
+            <div class="q-row" onclick="nav('inbox')">
+              <div class="q-ico" style="background:var(--r2)">⚠️</div>
+              <div class="q-body">
+                <div class="q-title">Alert — Silicone Earplugs</div>
+                <div class="q-sub">0.82x ROAS · 9 days below break-even</div>
+              </div>
+              <span class="tag tag-r">Alert</span>
+              <span style="font-size:12px;color:var(--t3)">›</span>
+            </div>
+            <div class="q-row" onclick="nav('inbox')">
+              <div class="q-ico" style="background:var(--y2)">📈</div>
+              <div class="q-body">
+                <div class="q-title">Scale budget × 2</div>
+                <div class="q-sub">LED Store · Portable Fan Store · avg 3.8x ROAS</div>
+              </div>
+              <span class="tag tag-y">Scale ×2</span>
+              <span style="font-size:12px;color:var(--t3)">›</span>
+            </div>
+            <div class="q-row" onclick="nav('inbox')">
+              <div class="q-ico" style="background:var(--b2)">📊</div>
+              <div class="q-body">
+                <div class="q-title">Keyword optimization × 1</div>
+                <div class="q-sub">COMMANDER · saves €22/week</div>
+              </div>
+              <span class="tag tag-b">Optimize</span>
+              <span style="font-size:12px;color:var(--t3)">›</span>
+            </div>
+            <div class="q-row" onclick="nav('inbox')">
+              <div class="q-ico" style="background:var(--g2)">🔍</div>
+              <div class="q-body">
+                <div class="q-title">Product suggestions × 4</div>
+                <div class="q-sub">SCOUT · scores 68–82 · top: Portable Neck Fan</div>
+              </div>
+              <span class="tag tag-g">Products ×4</span>
+              <span style="font-size:12px;color:var(--t3)">›</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT COL -->
+        <div>
+          <!-- Agent feed -->
+          <div class="sec" style="margin-top:2px"><div class="sec-t">Agent activity</div><div class="sec-a" onclick="nav('agents')">All agents</div></div>
+          <div class="card" style="margin-bottom:14px">
+            <div class="feed-item"><div class="feed-ico" style="background:var(--g2)">🔍</div><div style="flex:1"><div class="feed-agent" style="color:var(--green)">SCOUT</div><div class="feed-msg">Found 10 products overnight — 7 pending approval</div></div><div class="feed-time">06:00</div></div>
+            <div class="feed-item"><div class="feed-ico" style="background:var(--g2)">🏪</div><div style="flex:1"><div class="feed-agent" style="color:var(--green)">LISTER</div><div class="feed-msg">Auto-published 3 listings (score ≥75) with AI images</div></div><div class="feed-time">06:47</div></div>
+            <div class="feed-item"><div class="feed-ico" style="background:var(--y2)">💰</div><div style="flex:1"><div class="feed-agent" style="color:var(--yellow)">MIDAS</div><div class="feed-msg">P&L updated · net profit €381 yesterday</div></div><div class="feed-time">07:00</div></div>
+            <div class="feed-item" style="border:none"><div class="feed-ico" style="background:var(--r2)">🧠</div><div style="flex:1"><div class="feed-agent" style="color:var(--red)">HERALD</div><div class="feed-msg">Silicone Earplugs below break-even · ROAS 0.82x for 9 days</div></div><div class="feed-time">08:12</div></div>
+          </div>
+
+          <!-- Published today -->
+          <div class="sec"><div class="sec-t">Published today</div><span class="tag tag-g">3 listings</span></div>
+          <div class="card" style="margin-bottom:14px">
+            <div class="pub-row"><div class="pub-ico">🌀</div><div class="pub-name">Portable Neck Fan</div><div class="pub-tag">Live</div></div>
+            <div class="pub-row"><div class="pub-ico">⌨️</div><div class="pub-name">Ergonomic Wrist Rest</div><div class="pub-tag">Live</div></div>
+            <div class="pub-row" style="border:none"><div class="pub-ico">💡</div><div class="pub-name">LED Desk Lamp</div><div class="pub-tag">Live</div></div>
+          </div>
+
+          <!-- Connections -->
+          <div class="sec"><div class="sec-t">Connections</div></div>
+          <div class="card">
+            <div class="conn-row"><div class="cdot" style="background:var(--green)"></div><div style="flex:1">Shopify</div><div style="font-size:10px;color:var(--t2)">Connected</div></div>
+            <div class="conn-row"><div class="cdot" style="background:var(--green)"></div><div style="flex:1">Google Ads</div><div style="font-size:10px;color:var(--t2)">Connected</div></div>
+            <div class="conn-row"><div class="cdot" style="background:var(--green)"></div><div style="flex:1">AliExpress</div><div style="font-size:10px;color:var(--t2)">Connected</div></div>
+            <div class="conn-row" style="border:none"><div class="cdot" style="background:var(--green)"></div><div style="flex:1">Telegram alerts</div><div style="font-size:10px;color:var(--t2)">Active</div></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ─ INBOX ─ -->
+  <div class="view" id="v-inbox">
+    <div class="inbox-layout">
+
+      <!-- List panel -->
+      <div class="inbox-list" id="inbox-list">
+        <div class="il-header">
+          <div class="il-title">Inbox</div>
+          <div class="il-count" id="il-count">7 pending</div>
+        </div>
+        <!-- items injected by JS -->
+      </div>
+
+      <!-- Detail panel -->
+      <div class="inbox-detail" id="inbox-detail">
+        <div class="id-scroll" id="id-scroll">
+          <div class="id-empty">
+            <div style="font-size:40px;opacity:.3">📬</div>
+            <div style="font-size:14px;font-weight:700;color:var(--t2)">Select an item</div>
+          </div>
+        </div>
+        <div class="action-bar btn-disabled" id="action-bar">
+          <button class="btn-approve" onclick="doApprove()">✓ Approve</button>
+          <button class="btn-decline" onclick="doDecline()">✕ Decline</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ─ ANALYTICS ─ -->
+  <div class="view" id="v-analytics">
+    <div class="main-header">
+      <div>
+        <div class="mh-title">Analytics</div>
+        <div class="mh-sub">Powered by MIDAS · Yesterday</div>
+      </div>
+      <div class="mh-right">
+        <div style="position:relative" id="an-drp">
+          <button id="an-drp-btn" onclick="anToggle()" style="padding:7px 12px;border-radius:9px;background:var(--card);border:1px solid var(--line);color:var(--t2);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px">
+            📅 <span id="an-drp-lbl">Yesterday</span> ▾
+          </button>
+          <div id="an-drp-panel" style="display:none;position:absolute;top:calc(100% + 6px);right:0;width:180px;background:#111711;border:1px solid rgba(255,255,255,.1);border-radius:12px;box-shadow:0 16px 48px rgba(0,0,0,.7);z-index:200;overflow:hidden">
+            <div style="padding:7px 12px;font-size:9.5px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:1.5px;border-bottom:1px solid var(--line)">Period</div>
+            <div id="an-drp-items"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="scroll" style="flex:1">
+      <div class="analytics-stat-row">
+        <div class="an-card"><div class="an-l">Revenue</div><div class="an-v" style="color:var(--green)">€1,842</div><div class="an-d">↑ 12%</div></div>
+        <div class="an-card"><div class="an-l">COGS</div><div class="an-v">€734</div><div class="an-d">39.9%</div></div>
+        <div class="an-card"><div class="an-l">Ad Spend</div><div class="an-v">€620</div><div class="an-d">2.97x ROAS</div></div>
+        <div class="an-card"><div class="an-l">Net Profit</div><div class="an-v" style="color:var(--green)">€381</div><div class="an-d">20.7% margin</div></div>
+      </div>
+
+      <!-- Full-width chart -->
+      <div class="chart-card" style="margin-bottom:18px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div style="font-size:13px;font-weight:700">Revenue vs Spend — 7 days</div>
+          <div style="display:flex;gap:16px;font-size:11px;color:var(--t3)">
+            <span><span style="display:inline-block;width:10px;height:2px;background:var(--green);border-radius:2px;vertical-align:middle;margin-right:4px"></span>Revenue</span>
+            <span><span style="display:inline-block;width:10px;height:2px;background:rgba(255,255,255,.25);border-radius:2px;vertical-align:middle;margin-right:4px"></span>Spend</span>
+          </div>
+        </div>
+        <canvas id="an-chart" style="width:100%;height:90px;display:block"></canvas>
+        <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:9px;color:var(--t3)">
+          <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span style="color:var(--green);font-weight:700">Today</span>
+        </div>
+      </div>
+
+      <div class="analytics-grid">
+        <!-- P&L -->
+        <div>
+          <div class="sec"><div class="sec-t">P&L Breakdown</div></div>
+          <div class="card">
+            <div class="fin-row"><span class="fin-l">Revenue</span><span class="fin-v" style="color:var(--green)">€1,842</span></div>
+            <div class="fin-row"><span class="fin-l">Product COGS</span><span class="fin-v">— €734</span></div>
+            <div class="fin-row"><span class="fin-l">Google Ads spend</span><span class="fin-v">— €620</span></div>
+            <div class="fin-row"><span class="fin-l">Shopify subscription</span><span class="fin-v" style="color:var(--t2)">— €3</span></div>
+            <div class="fin-row"><span class="fin-l">Transaction fee (2%)</span><span class="fin-v" style="color:var(--t2)">— €37</span></div>
+            <div class="fin-row"><span class="fin-l">Payment gateway</span><span class="fin-v" style="color:var(--t2)">— €9</span></div>
+            <div class="fin-row"><span class="fin-l">Overhead</span><span class="fin-v" style="color:var(--t2)">— €58</span></div>
+            <div class="fin-total"><span style="font-weight:800;font-size:14px">Net Profit</span><span style="font-weight:900;font-size:22px;color:var(--green)">€381</span></div>
+          </div>
+        </div>
+        <!-- Product margins -->
+        <div>
+          <div class="sec"><div class="sec-t">Product margins</div></div>
+          <div class="card">
+            <div class="fin-row" style="align-items:center">
+              <span class="fin-l" style="flex:1">LED Desk Lamp</span>
+              <div class="bar-wrap" style="width:100px"><div class="bar-track"><div class="bar-fill" style="width:68%;background:var(--green)"></div></div></div>
+              <span style="font-size:13px;font-weight:800;color:var(--green);width:36px;text-align:right">34%</span>
+            </div>
+            <div class="fin-row" style="align-items:center">
+              <span class="fin-l" style="flex:1">Wireless Charger</span>
+              <div class="bar-wrap" style="width:100px"><div class="bar-track"><div class="bar-fill" style="width:52%;background:var(--green)"></div></div></div>
+              <span style="font-size:13px;font-weight:800;color:var(--green);width:36px;text-align:right">26%</span>
+            </div>
+            <div class="fin-row" style="align-items:center">
+              <span class="fin-l" style="flex:1">Cable Organiser</span>
+              <div class="bar-wrap" style="width:100px"><div class="bar-track"><div class="bar-fill" style="width:28%;background:rgba(255,255,255,.3)"></div></div></div>
+              <span style="font-size:13px;font-weight:800;color:var(--t2);width:36px;text-align:right">14%</span>
+            </div>
+            <div class="fin-row" style="align-items:center;border:none">
+              <div style="flex:1"><div class="fin-l">Silicone Earplugs</div><div style="font-size:10px;color:var(--red);margin-top:2px">⚠️ Below break-even</div></div>
+              <span style="font-size:14px;font-weight:900;color:var(--red)">−4%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─ AGENTS ─ -->
+  <div class="view" id="v-agents">
+    <div class="main-header">
+      <div>
+        <div class="mh-title">Agents</div>
+        <div class="mh-sub">4 active · 2 coming in V2</div>
+      </div>
+    </div>
+    <div class="scroll" style="flex:1">
+      <div class="agents-grid" style="margin-bottom:14px">
+        <div class="agent-card">
+          <div class="ag-ico" style="background:var(--y2)">🧠</div>
+          <div class="ag-body">
+            <div class="ag-name">HERALD</div>
+            <div class="ag-status"><span class="dot" style="background:var(--green)"></span> Active · Performance monitor</div>
+            <div class="ag-last">Last: flagged Silicone Earplugs 0.82x ROAS</div>
+          </div>
+          <div class="ag-right"><div class="ag-stat" style="color:var(--yellow)">2</div><div class="ag-stat-l">alerts</div></div>
+        </div>
+        <div class="agent-card">
+          <div class="ag-ico" style="background:var(--y2)">💰</div>
+          <div class="ag-body">
+            <div class="ag-name">MIDAS</div>
+            <div class="ag-status"><span class="dot" style="background:var(--green)"></span> Active · Finance & P&L</div>
+            <div class="ag-last">Last: P&L updated · profit €381</div>
+          </div>
+          <div class="ag-right"><div class="ag-stat" style="color:var(--green)">€381</div><div class="ag-stat-l">profit</div></div>
+        </div>
+        <div class="agent-card">
+          <div class="ag-ico" style="background:var(--g2)">🔍</div>
+          <div class="ag-body">
+            <div class="ag-name">SCOUT</div>
+            <div class="ag-status"><span class="dot" style="background:var(--green)"></span> Active · Product research</div>
+            <div class="ag-last">Last: found 10 products at 06:00</div>
+          </div>
+          <div class="ag-right"><div class="ag-stat" style="color:var(--yellow)">7</div><div class="ag-stat-l">pending</div></div>
+        </div>
+        <div class="agent-card">
+          <div class="ag-ico" style="background:var(--g2)">🏪</div>
+          <div class="ag-body">
+            <div class="ag-name">LISTER</div>
+            <div class="ag-status"><span class="dot" style="background:rgba(251,188,4,.6)"></span> Idle · Auto-publish ≥75</div>
+            <div class="ag-last">Last: 3 listings published today</div>
+          </div>
+          <div class="ag-right"><div class="ag-stat" style="color:var(--green)">3</div><div class="ag-stat-l">today</div></div>
+        </div>
+      </div>
+
+      <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px">Coming in V2</div>
+      <div class="agents-grid" style="margin-bottom:20px;opacity:.4">
+        <div class="agent-card"><div class="ag-ico" style="background:var(--card2)">📊</div><div class="ag-body"><div class="ag-name">COMMANDER</div><div class="ag-status">Google Ads management</div></div><span class="tag tag-y">V2</span></div>
+        <div class="agent-card"><div class="ag-ico" style="background:var(--card2)">💬</div><div class="ag-body"><div class="ag-name">CONCIERGE</div><div class="ag-status">Customer service · 24/7</div></div><span class="tag tag-y">V2</span></div>
+      </div>
+
+      <div class="sec"><div class="sec-t">Connections</div></div>
+      <div class="card" style="max-width:480px">
+        <div class="conn-row"><div class="cdot" style="background:var(--green)"></div><div style="flex:1">Shopify</div><div style="font-size:11px;color:var(--t2)">Connected</div></div>
+        <div class="conn-row"><div class="cdot" style="background:var(--green)"></div><div style="flex:1">Google Ads</div><div style="font-size:11px;color:var(--t2)">Connected</div></div>
+        <div class="conn-row"><div class="cdot" style="background:var(--green)"></div><div style="flex:1">AliExpress</div><div style="font-size:11px;color:var(--t2)">Connected</div></div>
+        <div class="conn-row" style="border:none"><div class="cdot" style="background:var(--green)"></div><div style="flex:1">Telegram alerts</div><div style="font-size:11px;color:var(--t2)">Active</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─ SETTINGS ─ -->
+  <div class="view" id="v-settings">
+    <div class="main-header">
+      <div>
+        <div class="mh-title">Settings</div>
+        <div class="mh-sub">Connections, thresholds, and preferences</div>
+      </div>
+    </div>
+    <div class="scroll" style="flex:1;max-width:640px">
+
+      <!-- Connections -->
+      <div class="sec" style="margin-bottom:8px"><div class="sec-t">Connections</div></div>
+      <div class="card" style="margin-bottom:20px">
+        <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line2)">
+          <div style="width:36px;height:36px;border-radius:10px;background:var(--g2);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🛒</div>
+          <div style="flex:1"><div style="font-size:13px;font-weight:700">Shopify</div><div style="font-size:11px;color:var(--t2);margin-top:1px">ge0swt-fe.myshopify.com</div></div>
+          <span class="tag tag-g">Connected</span>
+          <button onclick="alert('Reconnect Shopify')" style="padding:6px 12px;border-radius:8px;background:transparent;border:1px solid var(--line);color:var(--t2);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">Manage</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line2)">
+          <div style="width:36px;height:36px;border-radius:10px;background:var(--b2);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">📊</div>
+          <div style="flex:1"><div style="font-size:13px;font-weight:700">Google Ads</div><div style="font-size:11px;color:var(--t2);margin-top:1px">MCC · 182 accounts</div></div>
+          <span class="tag tag-g">Connected</span>
+          <button onclick="alert('Manage Google Ads')" style="padding:6px 12px;border-radius:8px;background:transparent;border:1px solid var(--line);color:var(--t2);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">Manage</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line2)">
+          <div style="width:36px;height:36px;border-radius:10px;background:rgba(255,100,0,0.12);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🧡</div>
+          <div style="flex:1"><div style="font-size:13px;font-weight:700">AliExpress</div><div style="font-size:11px;color:var(--t2);margin-top:1px">Product sourcing via API</div></div>
+          <span class="tag tag-g">Connected</span>
+          <button onclick="alert('Manage AliExpress')" style="padding:6px 12px;border-radius:8px;background:transparent;border:1px solid var(--line);color:var(--t2);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">Manage</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:14px 16px">
+          <div style="width:36px;height:36px;border-radius:10px;background:var(--b2);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">✈️</div>
+          <div style="flex:1"><div style="font-size:13px;font-weight:700">Telegram alerts</div><div style="font-size:11px;color:var(--t2);margin-top:1px">Urgent notifications</div></div>
+          <span class="tag tag-g">Active</span>
+          <button onclick="alert('Manage Telegram')" style="padding:6px 12px;border-radius:8px;background:transparent;border:1px solid var(--line);color:var(--t2);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">Manage</button>
+        </div>
+      </div>
+
+      <!-- HERALD thresholds -->
+      <div class="sec" style="margin-bottom:8px"><div class="sec-t">HERALD — Performance thresholds</div></div>
+      <div class="card" style="margin-bottom:20px">
+        <div style="padding:14px 16px;border-bottom:1px solid var(--line2)">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <div><div style="font-size:13px;font-weight:700">Scale trigger (ROAS ≥)</div><div style="font-size:11px;color:var(--t2);margin-top:2px">Propose budget increase above this ROAS</div></div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <button onclick="adjThresh('scale',-0.1)" style="width:28px;height:28px;border-radius:7px;background:var(--card2);border:1px solid var(--line);color:var(--t1);font-size:16px;cursor:pointer;font-family:inherit">−</button>
+              <div id="thresh-scale" style="font-size:16px;font-weight:900;min-width:48px;text-align:center;color:var(--green)">3.0x</div>
+              <button onclick="adjThresh('scale',0.1)" style="width:28px;height:28px;border-radius:7px;background:var(--card2);border:1px solid var(--line);color:var(--t1);font-size:16px;cursor:pointer;font-family:inherit">+</button>
+            </div>
+          </div>
+        </div>
+        <div style="padding:14px 16px;border-bottom:1px solid var(--line2)">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <div><div style="font-size:13px;font-weight:700">Alert trigger (ROAS ≤)</div><div style="font-size:11px;color:var(--t2);margin-top:2px">Flag listing as underperforming below this</div></div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <button onclick="adjThresh('alert',-0.1)" style="width:28px;height:28px;border-radius:7px;background:var(--card2);border:1px solid var(--line);color:var(--t1);font-size:16px;cursor:pointer;font-family:inherit">−</button>
+              <div id="thresh-alert" style="font-size:16px;font-weight:900;min-width:48px;text-align:center;color:var(--red)">1.0x</div>
+              <button onclick="adjThresh('alert',0.1)" style="width:28px;height:28px;border-radius:7px;background:var(--card2);border:1px solid var(--line);color:var(--t1);font-size:16px;cursor:pointer;font-family:inherit">+</button>
+            </div>
+          </div>
+        </div>
+        <div style="padding:14px 16px">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div><div style="font-size:13px;font-weight:700">Alert after (days)</div><div style="font-size:11px;color:var(--t2);margin-top:2px">Only flag after this many consecutive days below threshold</div></div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <button onclick="adjThresh('days',-1)" style="width:28px;height:28px;border-radius:7px;background:var(--card2);border:1px solid var(--line);color:var(--t1);font-size:16px;cursor:pointer;font-family:inherit">−</button>
+              <div id="thresh-days" style="font-size:16px;font-weight:900;min-width:48px;text-align:center">3d</div>
+              <button onclick="adjThresh('days',1)" style="width:28px;height:28px;border-radius:7px;background:var(--card2);border:1px solid var(--line);color:var(--t1);font-size:16px;cursor:pointer;font-family:inherit">+</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCOUT settings -->
+      <div class="sec" style="margin-bottom:8px"><div class="sec-t">SCOUT — Product research</div></div>
+      <div class="card" style="margin-bottom:20px">
+        <div style="padding:14px 16px;border-bottom:1px solid var(--line2)">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div><div style="font-size:13px;font-weight:700">Auto-publish threshold</div><div style="font-size:11px;color:var(--t2);margin-top:2px">Publish automatically at or above this score</div></div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <button onclick="adjThresh('autopub',-5)" style="width:28px;height:28px;border-radius:7px;background:var(--card2);border:1px solid var(--line);color:var(--t1);font-size:16px;cursor:pointer;font-family:inherit">−</button>
+              <div id="thresh-autopub" style="font-size:16px;font-weight:900;min-width:48px;text-align:center;color:var(--yellow)">75</div>
+              <button onclick="adjThresh('autopub',5)" style="width:28px;height:28px;border-radius:7px;background:var(--card2);border:1px solid var(--line);color:var(--t1);font-size:16px;cursor:pointer;font-family:inherit">+</button>
+            </div>
+          </div>
+        </div>
+        <div style="padding:14px 16px;border-bottom:1px solid var(--line2)">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div><div style="font-size:13px;font-weight:700">Inbox threshold</div><div style="font-size:11px;color:var(--t2);margin-top:2px">Send to inbox for review between these scores</div></div>
+            <div style="font-size:13px;font-weight:700;color:var(--t2)">60 – 74</div>
+          </div>
+        </div>
+        <div style="padding:14px 16px">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div><div style="font-size:13px;font-weight:700">Daily product limit</div><div style="font-size:11px;color:var(--t2);margin-top:2px">Max products SCOUT evaluates per run</div></div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <button onclick="adjThresh('products',-5)" style="width:28px;height:28px;border-radius:7px;background:var(--card2);border:1px solid var(--line);color:var(--t1);font-size:16px;cursor:pointer;font-family:inherit">−</button>
+              <div id="thresh-products" style="font-size:16px;font-weight:900;min-width:48px;text-align:center">10</div>
+              <button onclick="adjThresh('products',5)" style="width:28px;height:28px;border-radius:7px;background:var(--card2);border:1px solid var(--line);color:var(--t1);font-size:16px;cursor:pointer;font-family:inherit">+</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Notifications -->
+      <div class="sec" style="margin-bottom:8px"><div class="sec-t">Notifications</div></div>
+      <div class="card" style="margin-bottom:20px">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--line2)">
+          <div><div style="font-size:13px;font-weight:700">Urgent alerts (Telegram)</div><div style="font-size:11px;color:var(--t2);margin-top:1px">ROAS crashes, budget issues — always on</div></div>
+          <div class="toggle active" id="tog-urgent" onclick="toggleSetting('urgent')"></div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--line2)">
+          <div><div style="font-size:13px;font-weight:700">Daily digest (08:00)</div><div style="font-size:11px;color:var(--t2);margin-top:1px">Morning summary of performance + queue</div></div>
+          <div class="toggle active" id="tog-digest" onclick="toggleSetting('digest')"></div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 16px">
+          <div><div style="font-size:13px;font-weight:700">SCOUT findings (overnight)</div><div style="font-size:11px;color:var(--t2);margin-top:1px">Notify when products are ready for review</div></div>
+          <div class="toggle active" id="tog-scout" onclick="toggleSetting('scout')"></div>
+        </div>
+      </div>
+
+      <!-- Agent schedule -->
+      <div class="sec" style="margin-bottom:8px"><div class="sec-t">Agent schedule</div></div>
+      <div class="card" style="margin-bottom:32px">
+        <div class="fin-row"><span class="fin-l">SCOUT — product research</span><span style="font-weight:700;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--t2)">02:00 daily</span></div>
+        <div class="fin-row"><span class="fin-l">HERALD — performance check</span><span style="font-weight:700;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--t2)">06:00 daily</span></div>
+        <div class="fin-row"><span class="fin-l">MIDAS — P&L sync</span><span style="font-weight:700;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--t2)">07:00 daily</span></div>
+        <div class="fin-row"><span class="fin-l">COMMANDER — keyword audit</span><span style="font-weight:700;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--t2)">05:00 Monday</span></div>
+        <div class="fin-row" style="border:none"><span class="fin-l">SYNTHESIS — weekly learning loop</span><span style="font-weight:700;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--t2)">20:00 Sunday</span></div>
+      </div>
+
+    </div>
+  </div>
+
+</div><!-- /main -->
+</div><!-- /app -->
+
+<script>
+// ===== DATA =====
+const QUEUE = [
+  { id:'q1', type:'alert', agent:'HERALD', agentColor:'#FF453A', agentEmoji:'🧠', actionLabel:'Review listing', title:'Silicone Earplugs', sub:'0.82x ROAS · 9 days below break-even', badgeClass:'tag-r', badgeText:'Alert',
+    product:'Silicone Earplugs', roas:'0.82', daysBelow:9, spend7d:'€48', revenue7d:'€39', netLoss:'−€9',
+    suggestion:'Pause this listing or adjust pricing. ROAS has been below 1.0x for 9 consecutive days with no sign of recovery.' },
+  { id:'q2', type:'scale', agent:'HERALD', agentColor:'#FBBC04', agentEmoji:'🧠', actionLabel:'Scale budget', title:'Scale: LED Desk Lamp Store', sub:'€45 → €65/day · 3d ROAS 3.82x', badgeClass:'tag-y', badgeText:'Scale',
+    store:'LED Desk Lamp Store', campaign:'PMAX — All Products', currentBudget:'€45', proposedBudget:'€65', change:'+€20', roas3d:'3.82x', roas7d:'3.41x', spend7d:'€285', roas_data:[2.9,3.1,3.4,3.2,3.6,3.7,3.82],
+    reason:'3-day ROAS consistently above 3.5x. Strong momentum — good time to scale.' },
+  { id:'q3', type:'product', agent:'SCOUT', agentColor:'#00C96B', agentEmoji:'🔍', actionLabel:'List on Shopify', title:'Portable Neck Fan', sub:'Score 82 · AliExpress · Margin €18', badgeClass:'tag-g', badgeText:'Product',
+    name:'Portable Neck Fan', source:'AliExpress', trend:'+340%', rating:'4.8 ★ · 2,100 reviews', buy:'€8.20', sell:'€29.99', margin:'€18', score:82, scoreColor:'#00C96B', emoji:'🌀',
+    img:'https://images.unsplash.com/photo-1601924994987-69e26d50dc26?w=600&q=80',
+    trendStage:'early', peakWindow:'May – Jun 2026', trendData:[8,10,12,14,18,22,28,36,45,58,72,88] },
+  { id:'q4', type:'optimize', agent:'COMMANDER', agentColor:'#4285F4', agentEmoji:'📊', actionLabel:'Add negatives', title:'Keyword optimization: Charger Store', sub:'4 wasted keywords · saves €22/week', badgeClass:'tag-b', badgeText:'Optimize',
+    store:'Wireless Charger Store', campaign:'Standard Shopping', days:14,
+    keywords:[{term:'cheap charger',clicks:18,conv:0,spend:'8.40'},{term:'free charger',clicks:12,conv:0,spend:'5.60'},{term:'charger repair',clicks:10,conv:0,spend:'4.70'},{term:'broken charger',clicks:8,conv:0,spend:'3.30'}],
+    totalClicks:48, totalSpend:'22', impact:'Saves €22/week' },
+  { id:'q5', type:'product', agent:'SCOUT', agentColor:'#00C96B', agentEmoji:'🔍', actionLabel:'List on Shopify', title:'Ergonomic Wrist Rest', sub:'Score 77 · AliExpress · Margin €9', badgeClass:'tag-g', badgeText:'Product',
+    name:'Ergonomic Wrist Rest', source:'AliExpress', trend:'+220%', rating:'4.5 ★ · 1,200 reviews', buy:'€3.20', sell:'€14.99', margin:'€9', score:77, scoreColor:'#00C96B', emoji:'⌨️',
+    img:'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=600&q=80',
+    trendStage:'early', peakWindow:'Jun – Aug 2026', trendData:[15,18,20,22,25,30,38,46,55,62,70,80] },
+  { id:'q6', type:'scale', agent:'COMMANDER', agentColor:'#4285F4', agentEmoji:'📊', actionLabel:'Scale budget', title:'Scale: Portable Fan Store', sub:'€30 → €50/day · 3d ROAS 4.10x', badgeClass:'tag-y', badgeText:'Scale',
+    store:'Portable Fan Store', campaign:'PMAX — Summer Products', currentBudget:'€30', proposedBudget:'€50', change:'+€20', roas3d:'4.10x', roas7d:'3.75x', spend7d:'€196', roas_data:[3.1,3.3,3.5,3.6,3.8,3.9,4.1],
+    reason:'Summer trend accelerating. ROAS well above target. Window is now.' },
+  { id:'q7', type:'product', agent:'SCOUT', agentColor:'#00C96B', agentEmoji:'🔍', actionLabel:'List on Shopify', title:'Bamboo Desk Organiser', sub:'Score 68 · Temu · Margin €12 — fading trend', badgeClass:'tag-y', badgeText:'Product',
+    name:'Bamboo Desk Organiser', source:'Temu', trend:'+195%', rating:'4.6 ★ · 1,100 reviews', buy:'€4.30', sell:'€19.99', margin:'€12', score:68, scoreColor:'#FBBC04', emoji:'🪵',
+    img:'https://images.unsplash.com/photo-1497366216548-37526070297c?w=600&q=80',
+    trendStage:'fading', peakWindow:'Was Feb 2026', trendData:[88,90,92,91,88,84,78,70,62,54,46,40] },
+];
+
+let items = QUEUE.map(q=>({...q, done:false}));
+let selectedId = null;
+
+// ===== NAVIGATION =====
+function nav(id) {
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.sb-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('v-'+id)?.classList.add('active');
+  document.getElementById('ni-'+id)?.classList.add('active');
+  if(id==='inbox') renderInboxList();
+  if(id==='analytics') setTimeout(renderAnalyticsChart, 80);
+}
+
+// ===== INBOX =====
+function renderInboxList() {
+  const list = document.getElementById('inbox-list');
+  const pending = items.filter(i=>!i.done);
+  // Clear existing items (keep header)
+  Array.from(list.children).forEach(c=>{if(!c.classList.contains('il-header'))c.remove();});
+  document.getElementById('il-count').textContent = pending.length + ' pending';
+
+  if(pending.length===0){
+    const z=document.createElement('div');
+    z.style.cssText='display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 20px;text-align:center;color:var(--t2);gap:10px';
+    z.innerHTML='<div style="font-size:40px;opacity:.35">✅</div><div style="font-size:14px;font-weight:700">Inbox zero</div><div style="font-size:12px;color:var(--t3)">All items reviewed</div>';
+    list.appendChild(z);
+    document.getElementById('id-scroll').innerHTML='<div class="id-empty"><div style="font-size:48px;opacity:.3">🎉</div><div style="font-size:16px;font-weight:800">Inbox zero!</div><div style="font-size:13px;color:var(--t3);margin-top:6px">All items reviewed</div></div>';
+    document.getElementById('action-bar').classList.add('btn-disabled');
+    updateBadge();
+    return;
+  }
+
+  items.forEach(item=>{
+    const el=document.createElement('div');
+    el.className='il-item'+(item.done?' done':'')+(item.id===selectedId?' selected':'')+(item.type==='alert'&&item.id===selectedId?' alert-sel':'');
+    el.id='il-'+item.id;
+    const ico = {product:'🔍', scale:'📈', optimize:'📊', alert:'⚠️', feed:'🏪'}[item.type]||'📋';
+    const icoBg = {product:'var(--g2)',scale:'var(--y2)',optimize:'var(--b2)',alert:'var(--r2)',feed:'var(--p2)'}[item.type]||'var(--card2)';
+    el.innerHTML=`
+      <div class="il-ico" style="background:${icoBg}">${ico}</div>
+      <div class="il-body">
+        <div class="il-title2">${item.title}</div>
+        <div class="il-sub">${item.sub}</div>
+        <span class="il-badge tag ${item.badgeClass}">${item.badgeText}</span>
+      </div>`;
+    el.onclick=()=>selectItem(item.id);
+    list.appendChild(el);
+  });
+
+  // Auto-select first pending
+  if(!selectedId || items.find(i=>i.id===selectedId)?.done) {
+    const first = items.find(i=>!i.done);
+    if(first) selectItem(first.id);
+  }
+}
+
+function selectItem(id) {
+  selectedId = id;
+  document.querySelectorAll('.il-item').forEach(el=>el.classList.remove('selected','alert-sel'));
+  const el=document.getElementById('il-'+id);
+  if(el){el.classList.add('selected');if(items.find(i=>i.id===id)?.type==='alert')el.classList.add('alert-sel');}
+  renderDetail(id);
+  document.getElementById('action-bar').classList.remove('btn-disabled');
+}
+
+function renderDetail(id) {
+  const item=items.find(i=>i.id===id);
+  const scroll=document.getElementById('id-scroll');
+  if(!item){scroll.innerHTML='<div class="id-empty"><div style="font-size:40px;opacity:.3">📬</div><div style="font-size:14px;font-weight:700;color:var(--t2)">Select an item</div></div>';return;}
+
+  const agentBadge=`<div class="det-agent-badge" style="background:${item.agentColor}15;color:${item.agentColor}">${item.agentEmoji} ${item.agent} · ${item.actionLabel}</div>`;
+
+  let html='<div>';
+  html+=agentBadge;
+
+  if(item.type==='product'){
+    const stageMap={early:{label:'📈 Early Rise',color:'#00C96B'},peak:{label:'🔥 At Peak',color:'#FBBC04'},fading:{label:'📉 Fading',color:'#FF453A'}};
+    const st=stageMap[item.trendStage]||stageMap.early;
+    const spark=item.trendData.map((v,i)=>{const h=Math.max(3,Math.round((v/Math.max(...item.trendData))*32));const op=0.3+(i/(item.trendData.length-1))*0.7;return`<div style="flex:1;height:${h}px;background:${st.color};opacity:${op.toFixed(2)};border-radius:2px 2px 0 0"></div>`;}).join('');
+    html+=`<div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:14px">`;
+    if(item.img) html+=`<img src="${item.img}" style="width:160px;height:120px;object-fit:cover;border-radius:10px;flex-shrink:0" onerror="this.style.display='none'">`;
+    html+=`<div><div class="det-title">${item.name}</div><div class="det-sub">${item.source} · ${item.rating}</div>
+      <span class="tag tag-y">↑ ${item.trend}</span></div></div>`;
+    html+=`<div class="det-nums"><div class="det-num"><div class="dn-l">Buy price</div><div class="dn-v">${item.buy}</div></div><div class="det-num"><div class="dn-l">Sell price</div><div class="dn-v">${item.sell}</div></div><div class="det-num"><div class="dn-l">Margin</div><div class="dn-v" style="color:var(--green)">${item.margin}</div></div><div class="det-num"><div class="dn-l">SCOUT score</div><div class="dn-v" style="color:${item.scoreColor}">${item.score}/100</div></div></div>`;
+    html+=`<div style="background:${st.color}10;border:1px solid ${st.color}25;border-radius:12px;padding:12px 14px;margin-top:4px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div style="font-size:13px;font-weight:800;color:${st.color}">${st.label}</div><div style="font-size:12px;color:${st.color}">${item.peakWindow}</div></div>
+      <div style="display:flex;align-items:flex-end;gap:2px;height:32px">${spark}</div>
+      <div style="display:flex;justify-content:space-between;margin-top:5px;font-size:9px;color:var(--t3)"><span>12w ago</span><span style="color:${st.color};font-weight:700">${item.trendStage==='fading'?'Declining':'Accelerating'}</span><span>Now</span></div>
+    </div>`;
+  } else if(item.type==='scale'){
+    html+=`<div class="det-title">${item.store}</div><div class="det-sub">${item.campaign}</div>`;
+    html+=`<div style="display:flex;align-items:center;justify-content:center;gap:28px;padding:20px;background:var(--card2);border-radius:12px;margin-bottom:14px">
+      <div style="text-align:center"><div style="font-size:11px;color:var(--t3);margin-bottom:4px">Current</div><div style="font-size:32px;font-weight:900">${item.currentBudget}<span style="font-size:14px;color:var(--t3)">/day</span></div></div>
+      <div style="font-size:28px;color:var(--yellow)">→</div>
+      <div style="text-align:center"><div style="font-size:11px;color:var(--t3);margin-bottom:4px">Proposed</div><div style="font-size:32px;font-weight:900;color:var(--yellow)">${item.proposedBudget}<span style="font-size:14px;color:rgba(251,188,4,.4)">/day</span></div></div>
+    </div>`;
+    html+=`<div class="det-nums"><div class="det-num"><div class="dn-l">3d ROAS</div><div class="dn-v" style="color:var(--green)">${item.roas3d}</div></div><div class="det-num"><div class="dn-l">7d ROAS</div><div class="dn-v" style="color:var(--green)">${item.roas7d}</div></div><div class="det-num"><div class="dn-l">7d Spend</div><div class="dn-v">${item.spend7d}</div></div></div>`;
+    html+=`<div class="det-box">${item.reason}</div>`;
+    html+=`<canvas id="scale-chart-${id}" data-roas="${item.roas_data.join(',')}" style="width:100%;height:72px;display:block;margin-top:8px;border-radius:10px;border:1px solid var(--line);padding:10px;background:var(--card2)"></canvas>`;
+  } else if(item.type==='optimize'){
+    html+=`<div class="det-title">${item.store}</div><div class="det-sub">${item.campaign} · ${item.days} days</div>`;
+    html+=`<div style="border:1px solid var(--line);border-radius:11px;overflow:hidden;margin:12px 0">`;
+    html+=`<div style="display:grid;grid-template-columns:1fr 50px 50px 60px;gap:6px;padding:8px 12px;background:var(--card2)"><div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase">Keyword</div><div style="font-size:9px;font-weight:700;color:var(--t3);text-align:center">Clicks</div><div style="font-size:9px;font-weight:700;color:var(--t3);text-align:center">Conv</div><div style="font-size:9px;font-weight:700;color:var(--t3);text-align:right">Spend</div></div>`;
+    item.keywords.forEach(k=>{html+=`<div style="display:grid;grid-template-columns:1fr 50px 50px 60px;gap:6px;padding:10px 12px;border-top:1px solid var(--line2)"><div style="font-size:12px;font-weight:600;color:var(--red)">"${k.term}"</div><div style="font-size:13px;font-weight:700;text-align:center">${k.clicks}</div><div style="font-size:13px;font-weight:700;color:var(--red);text-align:center">${k.conv}</div><div style="font-size:13px;font-weight:700;color:var(--red);text-align:right">€${k.spend}</div></div>`;});
+    html+=`<div style="display:grid;grid-template-columns:1fr 50px 50px 60px;gap:6px;padding:10px 12px;border-top:1px solid var(--line);background:var(--card2)"><div style="font-size:12px;font-weight:700;color:var(--t2)">Total</div><div style="font-size:13px;font-weight:800;text-align:center">${item.totalClicks}</div><div style="font-size:13px;font-weight:800;color:var(--red);text-align:center">0</div><div style="font-size:13px;font-weight:800;color:var(--red);text-align:right">€${item.totalSpend}</div></div></div>`;
+    html+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:var(--g2);border:1px solid rgba(0,201,107,.15);border-radius:10px"><span style="font-size:12px;color:var(--t2)">${item.totalClicks} clicks · 0 conversions</span><span style="font-size:14px;font-weight:900;color:var(--green)">${item.impact}</span></div>`;
+  } else if(item.type==='alert'){
+    html+=`<div style="text-align:center;padding:24px;background:linear-gradient(160deg,#1f0808,#120404);border-radius:12px;margin-bottom:14px">
+      <div style="font-size:64px;font-weight:900;color:var(--red);letter-spacing:-2px;line-height:1">${item.roas}<span style="font-size:24px;color:rgba(255,69,58,.4)">x</span></div>
+      <div style="font-size:10px;color:rgba(255,69,58,.55);text-transform:uppercase;letter-spacing:1px;margin-top:4px">ROAS below break-even</div>
+      <div style="font-size:16px;font-weight:800;margin-top:8px">${item.product}</div>
+      <div style="font-size:12px;color:var(--t2);margin-top:4px">${item.daysBelow} consecutive days below 1.0x</div>
+    </div>`;
+    html+=`<div class="det-nums"><div class="det-num"><div class="dn-l">7d Spend</div><div class="dn-v" style="color:var(--red)">${item.spend7d}</div></div><div class="det-num"><div class="dn-l">7d Revenue</div><div class="dn-v">${item.revenue7d}</div></div><div class="det-num"><div class="dn-l">Net Loss</div><div class="dn-v" style="color:var(--red)">${item.netLoss}</div></div></div>`;
+    html+=`<div class="det-box" style="background:var(--r2);border:1px solid rgba(255,69,58,.15)">${item.suggestion}</div>`;
+  }
+
+  html+='</div>';
+  scroll.innerHTML=html;
+
+  // Update approve button label
+  const labels={product:'✓ List on Shopify',scale:'✓ Scale budget',optimize:'✓ Apply negatives',alert:'⏸ Pause listing',feed:'✓ Apply fix'};
+  document.querySelector('.btn-approve').textContent=labels[item.type]||'✓ Approve';
+
+  setTimeout(()=>renderScaleChart(id),50);
+}
+
+function renderScaleChart(itemId) {
+  const canvas=document.getElementById('scale-chart-'+itemId);
+  if(!canvas||!canvas.dataset.roas)return;
+  const data=canvas.dataset.roas.split(',').map(Number);
+  const W=canvas.parentElement.clientWidth-24;
+  canvas.width=W; canvas.height=52;
+  const ctx=canvas.getContext('2d');
+  const n=data.length,yMin=2.2,yMax=4.4,pl=4,pr=4,pt=4,pb=4,cw=W-pl-pr,ch=52-pt-pb;
+  const toY=v=>pt+ch*(1-(v-yMin)/(yMax-yMin));
+  const toX=i=>pl+(i/(n-1))*cw;
+  const pts=data.map((v,i)=>({x:toX(i),y:toY(v)}));
+  ctx.setLineDash([3,4]);ctx.beginPath();ctx.moveTo(pl,toY(3.0));ctx.lineTo(pl+cw,toY(3.0));
+  ctx.strokeStyle='rgba(255,255,255,0.12)';ctx.lineWidth=1;ctx.stroke();ctx.setLineDash([]);
+  ctx.beginPath();ctx.moveTo(pts[0].x,52-pb);
+  pts.forEach((p,i)=>{if(i===0){ctx.lineTo(p.x,p.y);return;}const mx=(pts[i-1].x+p.x)/2;ctx.bezierCurveTo(mx,pts[i-1].y,mx,p.y,p.x,p.y);});
+  ctx.lineTo(pts[n-1].x,52-pb);ctx.closePath();
+  const g=ctx.createLinearGradient(0,pt,0,52);g.addColorStop(0,'rgba(251,188,4,0.2)');g.addColorStop(1,'rgba(251,188,4,0)');
+  ctx.fillStyle=g;ctx.fill();
+  ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);
+  pts.forEach((p,i)=>{if(i===0)return;const mx=(pts[i-1].x+p.x)/2;ctx.bezierCurveTo(mx,pts[i-1].y,mx,p.y,p.x,p.y);});
+  ctx.strokeStyle='#FBBC04';ctx.lineWidth=2;ctx.stroke();
+  const last=pts[n-1];ctx.beginPath();ctx.arc(last.x,last.y,5,0,Math.PI*2);ctx.fillStyle='rgba(251,188,4,.2)';ctx.fill();
+  ctx.beginPath();ctx.arc(last.x,last.y,3,0,Math.PI*2);ctx.fillStyle='#FBBC04';ctx.fill();
+}
+
+function doApprove() {
+  if(!selectedId) return;
+  const item=items.find(i=>i.id===selectedId);
+  if(!item||item.done) return;
+  item.done=true;
+  const el=document.getElementById('il-'+selectedId);
+  if(el){el.style.transition='opacity .3s';el.style.opacity='0.3';setTimeout(()=>el.remove(),300);}
+  // Select next
+  const next=items.find(i=>!i.done);
+  selectedId=null;
+  renderInboxList();
+  if(next) selectItem(next.id);
+  else {
+    document.getElementById('id-scroll').innerHTML='<div class="id-empty"><div style="font-size:48px;opacity:.4">🎉</div><div style="font-size:16px;font-weight:800">Inbox zero</div><div style="font-size:12px;color:var(--t3);margin-top:6px">All items reviewed</div></div>';
+    document.getElementById('action-bar').classList.add('btn-disabled');
+  }
+  updateBadge();
+}
+
+function doDecline() {
+  if(!selectedId) return;
+  const item=items.find(i=>i.id===selectedId);
+  if(!item||item.done) return;
+  item.done=true;
+  const el=document.getElementById('il-'+selectedId);
+  if(el){el.style.transition='opacity .3s';el.style.opacity='0.3';setTimeout(()=>el.remove(),300);}
+  const next=items.find(i=>!i.done);
+  selectedId=null;
+  renderInboxList();
+  if(next) selectItem(next.id);
+  else {
+    document.getElementById('id-scroll').innerHTML='<div class="id-empty"><div style="font-size:48px;opacity:.4">✅</div><div style="font-size:16px;font-weight:800">Inbox zero</div></div>';
+    document.getElementById('action-bar').classList.add('btn-disabled');
+  }
+  updateBadge();
+}
+
+function updateBadge() {
+  const n=items.filter(i=>!i.done).length;
+  const bdg=document.getElementById('inbox-bdg');
+  if(n>0){bdg.textContent=n;bdg.style.display='flex';}
+  else bdg.style.display='none';
+}
+
+// ===== HOME CHART =====
+const HC_DATA = {
+  rev:{data:[1420,1680,1290,1750,1920,1610,1842],color:'#00C96B',grad:['rgba(0,201,107,0.18)','rgba(0,201,107,0)'],yMin:800,yMax:2300,label:'Revenue — 7 days',val:'€1,842',target:null},
+  roas:{data:[2.71,3.10,2.55,3.22,3.41,2.88,2.97],color:'#FBBC04',grad:['rgba(251,188,4,0.18)','rgba(251,188,4,0)'],yMin:2.0,yMax:4.0,label:'ROAS — 7 days',val:'2.97x',target:3.0},
+  profit:{data:[285,340,198,390,420,310,381],color:'#4285F4',grad:['rgba(66,133,244,0.18)','rgba(66,133,244,0)'],yMin:0,yMax:500,label:'Profit — 7 days',val:'€381',target:null},
+};
+
+function hcDraw(key) {
+  const d=HC_DATA[key];
+  const canvas=document.getElementById('hc-canvas');
+  if(!canvas)return;
+  const W=canvas.parentElement.clientWidth;
+  canvas.width=W;canvas.height=80;
+  const ctx=canvas.getContext('2d');
+  const n=d.data.length,pl=2,pr=2,pt=8,pb=4,cw=W-pl-pr,ch=80-pt-pb;
+  const toY=v=>pt+ch*(1-(v-d.yMin)/(d.yMax-d.yMin));
+  const toX=i=>pl+(i/(n-1))*cw;
+  const pts=d.data.map((v,i)=>({x:toX(i),y:toY(v)}));
+  if(d.target!=null){ctx.setLineDash([3,5]);ctx.beginPath();ctx.moveTo(pl,toY(d.target));ctx.lineTo(pl+cw,toY(d.target));ctx.strokeStyle='rgba(255,255,255,0.12)';ctx.lineWidth=1;ctx.stroke();ctx.setLineDash([]);}
+  ctx.beginPath();ctx.moveTo(pts[0].x,80-pb);
+  pts.forEach((p,i)=>{if(i===0){ctx.lineTo(p.x,p.y);return;}const mx=(pts[i-1].x+p.x)/2;ctx.bezierCurveTo(mx,pts[i-1].y,mx,p.y,p.x,p.y);});
+  ctx.lineTo(pts[n-1].x,80-pb);ctx.closePath();
+  const g=ctx.createLinearGradient(0,pt,0,80);g.addColorStop(0,d.grad[0]);g.addColorStop(1,d.grad[1]);
+  ctx.fillStyle=g;ctx.fill();
+  ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);
+  pts.forEach((p,i)=>{if(i===0)return;const mx=(pts[i-1].x+p.x)/2;ctx.bezierCurveTo(mx,pts[i-1].y,mx,p.y,p.x,p.y);});
+  ctx.strokeStyle=d.color;ctx.lineWidth=2;ctx.lineJoin='round';ctx.stroke();
+  const last=pts[n-1];
+  ctx.beginPath();ctx.arc(last.x,last.y,6,0,Math.PI*2);ctx.fillStyle=d.color+'30';ctx.fill();
+  ctx.beginPath();ctx.arc(last.x,last.y,3.5,0,Math.PI*2);ctx.fillStyle=d.color;ctx.fill();
+  document.getElementById('hc-label').textContent=d.label;
+  const ve=document.getElementById('hc-val');if(ve){ve.textContent=d.val;ve.style.color=d.color;}
+}
+
+function hcSwitch(key,btn) {
+  document.querySelectorAll('.hc-btn').forEach(b=>{b.classList.remove('active');});
+  btn.classList.add('active');
+  hcDraw(key);
+}
+
+// ===== ANALYTICS CHART =====
+function renderAnalyticsChart() {
+  const c=document.getElementById('an-chart');if(!c)return;
+  const W=c.parentElement.clientWidth;c.width=W;c.height=90;
+  const ctx=c.getContext('2d'),H=90;
+  const rev=[1420,1680,1190,1790,1560,2010,1842],spd=[490,580,420,620,530,690,620];
+  const max=Math.max(...rev)*1.1,n=7,pl=2,pr=2,pt=4,pb=2,cw=W-pl-pr,ch=H-pt-pb;
+  function drawLine(d,col,fc){
+    const pts=d.map((v,i)=>({x:pl+(i/(n-1))*cw,y:pt+ch*(1-v/max)}));
+    ctx.beginPath();ctx.moveTo(pts[0].x,H);pts.forEach(p=>ctx.lineTo(p.x,p.y));ctx.lineTo(pts[n-1].x,H);ctx.closePath();
+    const g=ctx.createLinearGradient(0,pt,0,H);g.addColorStop(0,fc);g.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=g;ctx.fill();
+    ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);
+    for(let i=1;i<n;i++){const mx=(pts[i-1].x+pts[i].x)/2;ctx.bezierCurveTo(mx,pts[i-1].y,mx,pts[i].y,pts[i].x,pts[i].y);}
+    ctx.strokeStyle=col;ctx.lineWidth=1.5;ctx.stroke();
+    const l=pts[n-1];ctx.beginPath();ctx.arc(l.x,l.y,3,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();
+  }
+  drawLine(spd,'rgba(255,255,255,0.25)','rgba(255,255,255,0.03)');
+  drawLine(rev,'#00C96B','rgba(0,201,107,0.08)');
+}
+
+// ===== STORE MENU =====
+function toggleStoreMenu(el) {
+  const stores=[{name:'My Dropshipping Store',color:'#00C96B',stat:'€1,842 · 2.97x'},{name:'Fashion Store NL',color:'#F5A623',stat:'€640 · 1.84x'},{name:'Home & Living DE',color:'#4285F4',stat:'€290 · 3.12x'}];
+  let menu=document.getElementById('store-menu');
+  if(menu){menu.remove();return;}
+  menu=document.createElement('div');menu.id='store-menu';
+  menu.style.cssText='position:fixed;top:72px;left:10px;width:200px;background:#111711;border:1px solid rgba(255,255,255,.1);border-radius:12px;box-shadow:0 16px 48px rgba(0,0,0,.7);z-index:1000;overflow:hidden';
+  stores.forEach(s=>{
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:9px;padding:11px 14px;cursor:pointer;font-size:12px;border-bottom:1px solid rgba(255,255,255,.04)';
+    row.innerHTML=`<div style="width:7px;height:7px;border-radius:50%;background:${s.color};flex-shrink:0"></div><div><div style="font-weight:700">${s.name}</div><div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:2px">${s.stat}</div></div>`;
+    row.onmouseover=()=>row.style.background='rgba(255,255,255,.04)';
+    row.onmouseout=()=>row.style.background='';
+    row.onclick=()=>{document.getElementById('sbStoreName').textContent=s.name;document.getElementById('sbDot').style.background=s.color;menu.remove();};
+    menu.appendChild(row);
+  });
+  document.body.appendChild(menu);
+  setTimeout(()=>document.addEventListener('click',()=>menu?.remove(),{once:true}),50);
+}
+
+// ===== ANALYTICS DATE PICKER =====
+const AN_PERIODS = ['Today','Yesterday','Last 7 days','Last 30 days','This month','Last month'];
+let anPeriod = 'Yesterday';
+let anCustomMode = false;
+
+function anInit() {
+  const items = document.getElementById('an-drp-items');
+  if(!items) return;
+  const presets = AN_PERIODS.map(p=>`
+    <div onclick="anSelect('${p}')" class="an-preset-item" style="padding:10px 14px;font-size:12px;font-weight:600;color:${p===anPeriod&&!anCustomMode?'var(--green)':'var(--t2)'};cursor:pointer;background:${p===anPeriod&&!anCustomMode?'var(--g2)':'transparent'};border-bottom:1px solid var(--line2);transition:background .1s"
+      onmouseover="if(!(this.style.background.includes('g2')))this.style.background='rgba(255,255,255,.04)'"
+      onmouseout="if(!(this.style.background.includes('g2')))this.style.background='transparent'"
+    >${p}</div>`).join('');
+
+  // Today's date for default max
+  const today = new Date().toISOString().split('T')[0];
+  const monthAgo = new Date(Date.now()-30*86400000).toISOString().split('T')[0];
+
+  const customSection = `
+    <div style="padding:10px 14px 6px;border-top:1px solid var(--line)">
+      <div style="font-size:9.5px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:10px">Custom range</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+        <div>
+          <div style="font-size:9px;font-weight:700;color:var(--t3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.6px">From</div>
+          <input type="date" id="an-from" value="${monthAgo}" max="${today}"
+            style="width:100%;padding:6px 8px;background:var(--card2);border:1px solid var(--line);border-radius:7px;color:var(--t1);font-size:11px;font-family:inherit;cursor:pointer;outline:none">
+        </div>
+        <div>
+          <div style="font-size:9px;font-weight:700;color:var(--t3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.6px">To</div>
+          <input type="date" id="an-to" value="${today}" max="${today}"
+            style="width:100%;padding:6px 8px;background:var(--card2);border:1px solid var(--line);border-radius:7px;color:var(--t1);font-size:11px;font-family:inherit;cursor:pointer;outline:none">
+        </div>
+      </div>
+      <button onclick="anApplyCustom()" style="width:100%;padding:8px;border-radius:8px;background:var(--green);border:none;color:#080C09;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">Apply range</button>
+    </div>`;
+
+  items.innerHTML = presets + customSection;
+}
+
+function anToggle() {
+  const panel = document.getElementById('an-drp-panel');
+  const isOpen = panel.style.display !== 'none';
+  panel.style.display = isOpen ? 'none' : 'block';
+  if(!isOpen) { document.getElementById('an-drp-panel').style.width='220px'; anInit(); }
+}
+
+function anSelect(period) {
+  anPeriod = period;
+  anCustomMode = false;
+  document.getElementById('an-drp-lbl').textContent = period;
+  document.getElementById('an-drp-panel').style.display = 'none';
+  const sub = document.querySelector('#v-analytics .mh-sub');
+  if(sub) sub.textContent = 'Powered by MIDAS · ' + period;
+  anInit();
+}
+
+function anApplyCustom() {
+  const from = document.getElementById('an-from')?.value;
+  const to = document.getElementById('an-to')?.value;
+  if(!from||!to) return;
+  if(new Date(from)>new Date(to)) { alert('From date must be before To date'); return; }
+  anCustomMode = true;
+  anPeriod = '';
+  const fmt = d => { const [y,m,dd]=d.split('-'); return dd+'/'+m+'/'+y.slice(2); };
+  const label = fmt(from) + ' – ' + fmt(to);
+  document.getElementById('an-drp-lbl').textContent = label;
+  document.getElementById('an-drp-panel').style.display = 'none';
+  const sub = document.querySelector('#v-analytics .mh-sub');
+  if(sub) sub.textContent = 'Powered by MIDAS · ' + label;
+}
+
+document.addEventListener('click', e => {
+  const drp = document.getElementById('an-drp');
+  if(drp && !drp.contains(e.target)) {
+    const panel = document.getElementById('an-drp-panel');
+    if(panel) panel.style.display = 'none';
+  }
+});
+
+// ===== SETTINGS =====
+const thresholds = { scale:3.0, alert:1.0, days:3, autopub:75, products:10 };
+function adjThresh(key, delta) {
+  thresholds[key] = Math.round((thresholds[key]+delta)*10)/10;
+  const el = document.getElementById('thresh-'+key);
+  if(!el) return;
+  const fmt = {scale:v=>v.toFixed(1)+'x', alert:v=>v.toFixed(1)+'x', days:v=>v+'d', autopub:v=>v, products:v=>v};
+  el.textContent = fmt[key](thresholds[key]);
+}
+function toggleSetting(id) {
+  const el = document.getElementById('tog-'+id);
+  if(el) el.classList.toggle('active');
+}
+
+// ===== INIT =====
+window.addEventListener('load',()=>setTimeout(()=>hcDraw('rev'),100));
+window.addEventListener('resize',()=>{hcDraw('rev');});
+document.addEventListener('keydown',e=>{
+  if(document.getElementById('v-inbox').classList.contains('active')){
+    if(e.key==='ArrowDown'){const pending=items.filter(i=>!i.done);const idx=pending.findIndex(i=>i.id===selectedId);if(idx<pending.length-1)selectItem(pending[idx+1].id);}
+    if(e.key==='ArrowUp'){const pending=items.filter(i=>!i.done);const idx=pending.findIndex(i=>i.id===selectedId);if(idx>0)selectItem(pending[idx-1].id);}
+    if(e.key==='Enter')doApprove();
+    if(e.key==='Backspace'||e.key==='Delete')doDecline();
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GoogleClaw — Blueprint V2</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#080C09; --bg2:#0d1310; --card:#111711; --card2:#181F19;
+  --line:rgba(255,255,255,0.07); --line2:rgba(255,255,255,0.04);
+  --green:#00C96B; --g2:rgba(0,201,107,0.1); --g3:rgba(0,201,107,0.05);
+  --yellow:#FBBC04; --y2:rgba(251,188,4,0.1);
+  --red:#FF453A; --r2:rgba(255,69,58,0.1);
+  --blue:#4285F4; --b2:rgba(66,133,244,0.1);
+  --purple:#A78BFA; --p2:rgba(167,139,250,0.1);
+  --t1:#fff; --t2:rgba(255,255,255,0.55); --t3:rgba(255,255,255,0.22);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{background:var(--bg);color:var(--t1);font-family:'Inter',sans-serif;line-height:1.6;}
+body{max-width:820px;margin:0 auto;padding:52px 28px 120px;}
+
+/* Header */
+.doc-header{border-bottom:1px solid var(--line);padding-bottom:32px;margin-bottom:52px;}
+.eyebrow{font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:12px;}
+.doc-title{font-size:38px;font-weight:900;letter-spacing:-.8px;line-height:1.1;margin-bottom:8px;}
+.doc-title span{color:var(--green);}
+.doc-sub{font-size:14px;color:var(--t2);margin-bottom:22px;line-height:1.6;}
+.pills{display:flex;gap:8px;flex-wrap:wrap;}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:8px;background:var(--card);border:1px solid var(--line);font-size:11px;font-weight:600;color:var(--t2);}
+
+/* Section headers */
+.sec-eyebrow{font-size:10px;font-weight:800;color:var(--green);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;}
+h2{font-size:22px;font-weight:900;letter-spacing:-.3px;margin-bottom:6px;}
+h3{font-size:16px;font-weight:800;margin-bottom:10px;color:var(--t1);}
+h4{font-size:13px;font-weight:800;color:var(--t2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;}
+.section{margin-bottom:52px;}
+.sub-section{margin-bottom:28px;}
+p{font-size:13px;color:var(--t2);line-height:1.7;margin-bottom:10px;}
+hr{border:none;border-top:1px solid var(--line);margin:48px 0;}
+
+/* Principle card */
+.principle-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:20px 0;}
+@media(max-width:560px){.principle-grid{grid-template-columns:1fr;}}
+.principle{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;}
+.p-icon{font-size:20px;margin-bottom:8px;}
+.p-title{font-size:13px;font-weight:800;margin-bottom:4px;}
+.p-desc{font-size:11px;color:var(--t2);line-height:1.5;}
+.principle.yes{border-color:rgba(0,201,107,.2);background:var(--g3);}
+.principle.no{border-color:rgba(255,69,58,.15);background:rgba(255,69,58,.03);}
+
+/* Architecture flow */
+.arch-flow{display:flex;align-items:stretch;gap:0;margin:20px 0;overflow-x:auto;}
+.af-node{flex:1;min-width:100px;background:var(--card);border:1px solid var(--line);border-right:none;padding:14px 12px;display:flex;flex-direction:column;gap:4px;}
+.af-node:first-child{border-radius:12px 0 0 12px;}
+.af-node:last-child{border-right:1px solid var(--line);border-radius:0 12px 12px 0;}
+.af-node.core{background:var(--g3);border-color:rgba(0,201,107,.2);}
+.af-num{font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;}
+.af-name{font-size:12px;font-weight:900;}
+.af-desc{font-size:9px;color:var(--t2);line-height:1.4;margin-top:2px;}
+.af-arrow{display:flex;align-items:center;padding:0 2px;color:var(--t3);font-size:13px;flex-shrink:0;}
+
+/* Flow diagram */
+.flow{display:flex;flex-direction:column;gap:0;margin:16px 0;}
+.flow-row{display:flex;align-items:center;gap:0;}
+.flow-box{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:11px 14px;font-size:12px;font-weight:700;flex:1;}
+.flow-box.oc{background:var(--g3);border-color:rgba(0,201,107,.25);color:var(--green);}
+.flow-box.web{background:var(--b2);border-color:rgba(66,133,244,.2);color:var(--blue);}
+.flow-box.file{background:var(--y2);border-color:rgba(251,188,4,.2);color:var(--yellow);}
+.flow-box sub{font-size:9px;font-weight:600;color:var(--t2);display:block;margin-top:2px;}
+.flow-arrow{width:32px;text-align:center;font-size:13px;color:var(--t3);flex-shrink:0;}
+.flow-down{height:20px;width:2px;background:var(--line);margin:0 auto;}
+.flow-label{font-size:9px;font-weight:700;color:var(--t3);text-align:center;padding:4px 0;text-transform:uppercase;letter-spacing:.5px;}
+
+/* Code */
+pre{background:#080f09;border:1px solid rgba(0,201,107,.1);border-radius:10px;padding:16px 18px;overflow-x:auto;margin:12px 0;}
+code{font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.75;color:rgba(255,255,255,.75);}
+pre code{color:rgba(255,255,255,.75);}
+p code,li code,td code{background:rgba(0,201,107,.08);color:var(--green);padding:1px 5px;border-radius:4px;font-size:11px;font-family:'JetBrains Mono',monospace;}
+
+/* Tables */
+table{width:100%;border-collapse:collapse;margin:12px 0;font-size:12px;}
+th{text-align:left;padding:8px 12px;font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid var(--line);}
+td{padding:9px 12px;border-bottom:1px solid var(--line2);color:var(--t2);}
+tr:last-child td{border-bottom:none;}
+tr:nth-child(even) td{background:var(--bg2);}
+td:first-child{color:var(--t1);font-weight:600;}
+
+/* Agent cards */
+.agent-card{border-radius:14px;overflow:hidden;border:1px solid var(--line);margin-bottom:16px;}
+.ac-header{padding:14px 16px;display:flex;align-items:center;gap:12px;}
+.ac-ico{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;}
+.ac-name{font-size:16px;font-weight:900;}
+.ac-role{font-size:11px;margin-top:1px;opacity:.65;}
+.ac-body{background:var(--card);padding:14px 16px;}
+.ac-row{display:flex;gap:8px;margin-bottom:7px;font-size:12px;}
+.ac-lbl{font-weight:700;color:var(--t3);min-width:80px;flex-shrink:0;}
+.ac-val{color:var(--t2);line-height:1.5;}
+.ac-tags{display:flex;flex-wrap:wrap;gap:5px;}
+.tag{display:inline-flex;align-items:center;padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;}
+
+/* Build order */
+.build-list{counter-reset:build;}
+.build-item{counter-increment:build;display:flex;align-items:flex-start;gap:12px;padding:11px 14px;border-radius:10px;margin-bottom:5px;background:var(--card);border:1px solid var(--line);}
+.build-item::before{content:counter(build);width:24px;height:24px;border-radius:7px;background:var(--g2);color:var(--green);font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;}
+.bi-title{font-size:13px;font-weight:700;}
+.bi-sub{font-size:11px;color:var(--t3);margin-top:2px;}
+
+/* DoD */
+.dod-item{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-radius:10px;margin-bottom:5px;background:var(--card);border:1px solid var(--line);font-size:12px;color:var(--t2);}
+.dod-check{width:18px;height:18px;border-radius:5px;border:2px solid rgba(0,201,107,.35);background:var(--g3);flex-shrink:0;margin-top:1px;}
+
+/* Info + warning boxes */
+.info{background:var(--g3);border:1px solid rgba(0,201,107,.15);border-radius:12px;padding:14px 16px;margin:14px 0;font-size:12px;color:var(--t2);line-height:1.7;}
+.info strong{color:var(--t1);}
+.warn{background:rgba(251,188,4,.05);border:1px solid rgba(251,188,4,.2);border-radius:12px;padding:14px 16px;margin:14px 0;font-size:12px;color:var(--t2);line-height:1.7;}
+
+/* File tree */
+.tree{background:#080f09;border:1px solid rgba(0,201,107,.1);border-radius:10px;padding:16px 18px;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.9;color:rgba(255,255,255,.65);}
+.tree .dir{color:var(--green);}
+.tree .comment{color:rgba(255,255,255,.25);}
+
+/* Cron table */
+.cron-block{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;}
+.cron-row{display:grid;grid-template-columns:120px 110px 1fr;gap:12px;padding:10px 16px;border-bottom:1px solid var(--line2);font-size:12px;align-items:center;}
+.cron-row:last-child{border-bottom:none;}
+.cron-row.header{padding:8px 16px;border-bottom:1px solid var(--line);}
+.cron-time{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green);}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="doc-header">
+  <div class="eyebrow">Implementation Blueprint — V2 · OpenClaw Native</div>
+  <div class="doc-title">Google<span>Claw</span></div>
+  <div class="doc-sub">
+    Een multi-agent orchestrator voor Google Ads dropshipping — gebouwd op OpenClaw als fundament, niet eromheen.<br>
+    De web app is een client van OpenClaw's eigen gateway. Geen aparte backend. Geen los staande software.
+  </div>
+  <div class="pills">
+    <div class="pill">⚡ OpenClaw Native</div>
+    <div class="pill">🌐 Web first</div>
+    <div class="pill">🗄 Workspace files als state</div>
+    <div class="pill">🔌 Gateway /tools/invoke API</div>
+    <div class="pill">❌ Geen Supabase</div>
+    <div class="pill">❌ Geen FastAPI</div>
+  </div>
+</div>
+
+<!-- PRINCIPE -->
+<div class="section">
+  <div class="sec-eyebrow">Kernprincipe</div>
+  <h2>OpenClaw IS de backend</h2>
+  <p>Het verschil met "verkapte software" zoals Empira: bij Empira draait er een onafhankelijke applicatie die toevallig AI gebruikt. Bij GoogleClaw IS OpenClaw de runtime. Er bestaat geen GoogleClaw zonder OpenClaw — het is geen aparte software, het is een OpenClaw-configuratie met agents, files en een web-interface.</p>
+
+  <div class="principle-grid">
+    <div class="principle no">
+      <div class="p-icon">❌</div>
+      <div class="p-title">Verkapte software (Empira-stijl)</div>
+      <div class="p-desc">Eigen backend, eigen database, eigen auth, eigen agent runtime. OpenClaw is een tool erin. Je zou OpenClaw kunnen vervangen.</div>
+    </div>
+    <div class="principle yes">
+      <div class="p-icon">✅</div>
+      <div class="p-title">OpenClaw native (GoogleClaw)</div>
+      <div class="p-desc">OpenClaw is de runtime, het geheugen, de executor. De web app is een scherm dat via de gateway communiceert. Zonder OpenClaw werkt er niets.</div>
+    </div>
+    <div class="principle no">
+      <div class="p-icon">❌</div>
+      <div class="p-title">Losse Python agents</div>
+      <div class="p-desc">Scripts die zelfstandig draaien, eigen cron daemon, eigen logging, eigen API keys beheren buiten OpenClaw om.</div>
+    </div>
+    <div class="principle yes">
+      <div class="p-icon">✅</div>
+      <div class="p-title">OpenClaw sub-agent sessies</div>
+      <div class="p-desc">Agents leven als OpenClaw sessies. Crons spawnen sub-agents. Memory in workspace files. Tools via OpenClaw's eigen tool-ecosysteem.</div>
+    </div>
+  </div>
+</div>
+
+<hr>
+
+<!-- ARCHITECTUUR -->
+<div class="section">
+  <div class="sec-eyebrow">Architectuur</div>
+  <h2>5 lagen, 1 runtime</h2>
+
+  <div class="arch-flow">
+    <div class="af-node">
+      <div class="af-num">01</div>
+      <div class="af-name">Data</div>
+      <div class="af-desc">Google Ads API, Shopify API, MariaDB, AliExpress, Trends</div>
+    </div>
+    <div class="af-arrow">›</div>
+    <div class="af-node core">
+      <div class="af-num">02 — kern</div>
+      <div class="af-name" style="color:var(--green)">OpenClaw</div>
+      <div class="af-desc">Agents, crons, memory, tools, gateway, sessies</div>
+    </div>
+    <div class="af-arrow">›</div>
+    <div class="af-node">
+      <div class="af-num">03</div>
+      <div class="af-name">Workspace files</div>
+      <div class="af-desc">queue.json, dashboard.json, agent state.md</div>
+    </div>
+    <div class="af-arrow">›</div>
+    <div class="af-node">
+      <div class="af-num">04</div>
+      <div class="af-name">Gateway API</div>
+      <div class="af-desc">POST /tools/invoke — HTTP op poort 63783</div>
+    </div>
+    <div class="af-arrow">›</div>
+    <div class="af-node">
+      <div class="af-num">05</div>
+      <div class="af-name">Web app</div>
+      <div class="af-desc">mobile.html — browser client van de gateway</div>
+    </div>
+  </div>
+
+  <div class="info"><strong>Geen extra laag.</strong> Alles tussen de data en de web app is OpenClaw. Er bestaat geen aparte server, geen aparte database, geen aparte auth. De gateway is de enige poort naar buiten.</div>
+</div>
+
+<!-- GATEWAY API -->
+<div class="section">
+  <div class="sec-eyebrow">De sleutel</div>
+  <h2>OpenClaw Gateway — /tools/invoke</h2>
+  <p>OpenClaw's gateway exposed standaard een HTTP endpoint op hetzelfde poort als de WebSocket. De web app roept dit aan als een REST API — met de gateway token als auth.</p>
+
+  <pre><code># Data lezen (web app → OpenClaw → workspace file)
+POST http://[vps-ip]:63783/tools/invoke
+Authorization: Bearer [gateway-token]
+Content-Type: application/json
+
+{
+  "tool": "read",
+  "args": { "path": "/opt/googleclaw/workspace/queue.json" }
+}
+
+# Agent aansturen — approval sturen naar main sessie
+{
+  "tool": "sessions_send",
+  "args": {
+    "sessionKey": "main",
+    "message": "APPROVE scale:led-desk-lamp-store"
+  }
+}</code></pre>
+
+  <div class="warn">
+    <strong>sessions_send</strong> zit standaard op de gateway deny list. Één config-wijziging op de VPS unlock dit:
+    <br><br>
+    <code>{ "gateway": { "tools": { "allow": ["sessions_send"] } } }</code>
+  </div>
+
+  <h4 style="margin-top:20px">Wat de web app via /tools/invoke kan</h4>
+  <table>
+    <tr><th>Actie</th><th>Tool</th><th>Args</th></tr>
+    <tr><td>Queue laden</td><td><code>read</code></td><td><code>{ path: "queue.json" }</code></td></tr>
+    <tr><td>Dashboard data laden</td><td><code>read</code></td><td><code>{ path: "dashboard.json" }</code></td></tr>
+    <tr><td>Agent status laden</td><td><code>read</code></td><td><code>{ path: "agents-status.json" }</code></td></tr>
+    <tr><td>Item goedkeuren</td><td><code>sessions_send</code></td><td><code>{ sessionKey: "main", message: "APPROVE ..." }</code></td></tr>
+    <tr><td>Item afwijzen</td><td><code>sessions_send</code></td><td><code>{ sessionKey: "main", message: "DECLINE ..." }</code></td></tr>
+    <tr><td>Sessie-lijst</td><td><code>sessions_list</code></td><td><code>{}</code></td></tr>
+  </table>
+
+  <h4 style="margin-top:20px">Caddy als CORS-oplossing</h4>
+  <p>De web app en de gateway zitten op verschillende origins. Caddy op de VPS serveert de web app en proxiet <code>/tools/invoke</code> — zo is alles dezelfde origin, geen CORS issues.</p>
+  <pre><code>googleclaw.icarusagency.io {
+  # Serveert mobile.html
+  handle /mobile.html {
+    root * /opt/googleclaw/frontend
+    file_server
+  }
+
+  # Proxiet gateway calls (CORS-vrij, zelfde origin)
+  handle /tools/invoke {
+    reverse_proxy 127.0.0.1:63783
+  }
+}</code></pre>
+</div>
+
+<hr>
+
+<!-- DATA LAYER -->
+<div class="section">
+  <div class="sec-eyebrow">State management</div>
+  <h2>Workspace files als database</h2>
+  <p>Geen externe database. OpenClaw agents schrijven JSON files naar de workspace. De web app leest ze via de gateway. Simpel, transparant, volledig binnen OpenClaw's eigen systeem.</p>
+
+  <div class="tree">
+<span class="dir">/opt/googleclaw/workspace/</span>
+├── <span class="dir">queue.json</span>          <span class="comment">← agents schrijven pending items</span>
+├── <span class="dir">dashboard.json</span>      <span class="comment">← MIDAS schrijft dagelijks</span>
+├── <span class="dir">agents-status.json</span>  <span class="comment">← elke agent update na run</span>
+├── <span class="dir">agents/</span>
+│   ├── <span class="dir">herald/</span>
+│   │   ├── state.md        <span class="comment">← last run, learnings</span>
+│   │   └── learnings.md    <span class="comment">← patronen die HERALD geleerd heeft</span>
+│   ├── <span class="dir">scout/</span>
+│   │   ├── state.md
+│   │   └── learnings.md
+│   ├── <span class="dir">midas/</span>
+│   │   └── state.md
+│   ├── <span class="dir">lister/</span>
+│   │   └── state.md
+│   └── <span class="dir">commander/</span>
+│       ├── state.md
+│       └── waste-patterns.md
+└── <span class="dir">frontend/</span>
+    └── mobile.html         <span class="comment">← de web app zelf</span>
+  </div>
+
+  <h4 style="margin-top:20px">queue.json structuur</h4>
+  <pre><code>{
+  "items": [
+    {
+      "id": "abc-123",
+      "type": "scale",
+      "agent": "HERALD",
+      "created_at": "2026-04-05T06:00:00Z",
+      "status": "pending",
+      "payload": {
+        "store": "LED Desk Lamp Store",
+        "currentBudget": "€45",
+        "proposedBudget": "€65",
+        "roas3d": "3.82x",
+        "roas_data": [2.9, 3.1, 3.4, 3.2, 3.6, 3.7, 3.82],
+        "reason": "3-day ROAS above 3.5x, strong momentum."
+      }
+    }
+  ],
+  "updated_at": "2026-04-05T06:02:14Z"
+}</code></pre>
+
+  <h4 style="margin-top:20px">dashboard.json structuur</h4>
+  <pre><code>{
+  "yesterday": {
+    "revenue": 1842,
+    "spend": 620,
+    "roas": 2.97,
+    "profit": 381
+  },
+  "chart_7d": {
+    "revenue": [1420, 1680, 1290, 1750, 1920, 1610, 1842],
+    "roas":    [2.71, 3.10, 2.55, 3.22, 3.41, 2.88, 2.97],
+    "profit":  [285,  340,  198,  390,  420,  310,  381]
+  },
+  "updated_at": "2026-04-05T07:03:00Z"
+}</code></pre>
+</div>
+
+<hr>
+
+<!-- APPROVAL FLOW -->
+<div class="section">
+  <div class="sec-eyebrow">Approval flow</div>
+  <h2>Van swipe naar actie — volledig via OpenClaw</h2>
+
+  <div class="flow">
+    <div class="flow-row">
+      <div class="flow-box oc">OpenClaw agent (cron) loopt om 06:00<sub>Bijv. HERALD — sub-agent sessie</sub></div>
+    </div>
+    <div class="flow-down"></div>
+    <div class="flow-label">schrijft resultaat naar</div>
+    <div class="flow-down"></div>
+    <div class="flow-row">
+      <div class="flow-box file">queue.json in workspace<sub>{ type: "scale", status: "pending", payload: {...} }</sub></div>
+    </div>
+    <div class="flow-down"></div>
+    <div class="flow-label">web app leest via /tools/invoke (read)</div>
+    <div class="flow-down"></div>
+    <div class="flow-row">
+      <div class="flow-box web">mobile.html toont de card in Inbox<sub>Henk swipt rechts: Approve</sub></div>
+    </div>
+    <div class="flow-down"></div>
+    <div class="flow-label">web app stuurt via /tools/invoke (sessions_send)</div>
+    <div class="flow-down"></div>
+    <div class="flow-row">
+      <div class="flow-box oc">OpenClaw main sessie ontvangt "APPROVE scale:abc-123"<sub>Verwerkt als normaal inkomend bericht</sub></div>
+    </div>
+    <div class="flow-down"></div>
+    <div class="flow-label">OpenClaw gebruikt z'n eigen tools</div>
+    <div class="flow-down"></div>
+    <div class="flow-row">
+      <div class="flow-box oc">Google Ads budget aangepast via bestaande script<sub>Zelfde tools als wanneer Henk het via Telegram vraagt</sub></div>
+    </div>
+    <div class="flow-down"></div>
+    <div class="flow-label">agent update queue.json status + stuurt bevestiging</div>
+    <div class="flow-down"></div>
+    <div class="flow-row">
+      <div class="flow-box file">queue.json: { status: "approved", executed_at: "..." }<sub>Web app reflecteert dit live</sub></div>
+    </div>
+  </div>
+
+  <div class="info" style="margin-top:20px">
+    <strong>Telegram werkt parallel.</strong> Henk kan ook gewoon via Telegram "approve scale led-store" sturen. OpenClaw verwerkt het identiek — dezelfde agent, dezelfde tools, hetzelfde resultaat. De web app is een extra kanaal, geen vervanging.
+  </div>
+</div>
+
+<hr>
+
+<!-- AGENTS -->
+<div class="section">
+  <div class="sec-eyebrow">Agent architectuur</div>
+  <h2>5 agents — allemaal OpenClaw sub-agent sessies</h2>
+  <p>Elke agent is een OpenClaw cron die een sub-agent sessie spawnt. Die sessie heeft toegang tot alle OpenClaw tools, schrijft naar workspace files, en leest zijn eigen memory. Geen aparte processen, geen eigen runtime.</p>
+
+  <!-- HERALD -->
+  <div class="agent-card" style="border-top:3px solid var(--yellow)">
+    <div class="ac-header" style="background:var(--y2)">
+      <div class="ac-ico" style="background:rgba(251,188,4,.15)">🧠</div>
+      <div>
+        <div class="ac-name" style="color:var(--yellow)">HERALD</div>
+        <div class="ac-role" style="color:rgba(251,188,4,.6)">Performance Monitor — meest waardevolle agent</div>
+      </div>
+    </div>
+    <div class="ac-body">
+      <div class="ac-row"><div class="ac-lbl">Cron</div><div class="ac-val"><code>0 6 * * *</code> — dagelijks 06:00</div></div>
+      <div class="ac-row"><div class="ac-lbl">Sessie task</div><div class="ac-val">Read agents/herald/state.md → query Google Ads API voor elke actieve store → schrijf scale/alert items naar queue.json → update agents/herald/state.md</div></div>
+      <div class="ac-row"><div class="ac-lbl">Tools gebruikt</div>
+        <div class="ac-val">
+          <div class="ac-tags">
+            <span class="tag" style="background:var(--g2);color:var(--green)">exec (google_ads script)</span>
+            <span class="tag" style="background:var(--card2);color:var(--t2)">read (state.md)</span>
+            <span class="tag" style="background:var(--card2);color:var(--t2)">write (queue.json)</span>
+            <span class="tag" style="background:var(--card2);color:var(--t2)">message (Telegram notify)</span>
+          </div>
+        </div>
+      </div>
+      <div class="ac-row"><div class="ac-lbl">Memory</div><div class="ac-val"><code>agents/herald/state.md</code> — last run, scale success rates per store, per-category ROAS baselines</div></div>
+      <div class="ac-row"><div class="ac-lbl">Leert</div><div class="ac-val">Na elke approved scale: was ROAS 7 dagen later nog boven target? Update success rate. Pas budget-increment aan per store-categorie.</div></div>
+    </div>
+  </div>
+
+  <!-- SCOUT -->
+  <div class="agent-card" style="border-top:3px solid var(--green)">
+    <div class="ac-header" style="background:var(--g3)">
+      <div class="ac-ico" style="background:var(--g2)">🔍</div>
+      <div>
+        <div class="ac-name" style="color:var(--green)">SCOUT</div>
+        <div class="ac-role" style="color:rgba(0,201,107,.5)">Product Research — meest complexe agent</div>
+      </div>
+    </div>
+    <div class="ac-body">
+      <div class="ac-row"><div class="ac-lbl">Cron</div><div class="ac-val"><code>0 2 * * *</code> — dagelijks 02:00</div></div>
+      <div class="ac-row"><div class="ac-lbl">Sessie task</div><div class="ac-val">Haal trending producten op via Google Trends + AliExpress → score elk product 0-100 → schrijf top items naar queue.json → update state.md</div></div>
+      <div class="ac-row"><div class="ac-lbl">Tools gebruikt</div>
+        <div class="ac-val">
+          <div class="ac-tags">
+            <span class="tag" style="background:var(--g2);color:var(--green)">web_search (trends)</span>
+            <span class="tag" style="background:var(--g2);color:var(--green)">web_fetch (AliExpress)</span>
+            <span class="tag" style="background:var(--card2);color:var(--t2)">exec (pytrends script)</span>
+            <span class="tag" style="background:var(--card2);color:var(--t2)">write (queue.json)</span>
+            <span class="tag" style="background:var(--card2);color:var(--t2)">image (product analyse)</span>
+          </div>
+        </div>
+      </div>
+      <div class="ac-row"><div class="ac-lbl">Scoring</div><div class="ac-val">trend (30pt) + marge (25pt) + concurrentie (20pt) + leverancier (15pt) + timing (10pt) = 0–100. Score ≥80 auto-approve, 60–79 naar Inbox, &lt;60 discard.</div></div>
+      <div class="ac-row"><div class="ac-lbl">Leert</div><div class="ac-val">Elke approval/rejection gelogd in <code>agents/scout/outcomes.json</code>. Wekelijks: herbereken scoring-gewichten op basis van 30-daags resultaat.</div></div>
+    </div>
+  </div>
+
+  <!-- MIDAS -->
+  <div class="agent-card" style="border-top:3px solid var(--blue)">
+    <div class="ac-header" style="background:var(--b2)">
+      <div class="ac-ico" style="background:rgba(66,133,244,.15)">💰</div>
+      <div>
+        <div class="ac-name" style="color:var(--blue)">MIDAS</div>
+        <div class="ac-role" style="color:rgba(66,133,244,.6)">Finance — simpelste agent, bouw eerst</div>
+      </div>
+    </div>
+    <div class="ac-body">
+      <div class="ac-row"><div class="ac-lbl">Cron</div><div class="ac-val"><code>0 7 * * *</code> — dagelijks 07:00</div></div>
+      <div class="ac-row"><div class="ac-lbl">Sessie task</div><div class="ac-val">Haal revenue op via MariaDB v_store_performance + spend via Google Ads API → schrijf dashboard.json → update agents-status.json</div></div>
+      <div class="ac-row"><div class="ac-lbl">Tools gebruikt</div>
+        <div class="ac-val">
+          <div class="ac-tags">
+            <span class="tag" style="background:var(--b2);color:var(--blue)">exec (mariadb query)</span>
+            <span class="tag" style="background:var(--b2);color:var(--blue)">exec (google ads script)</span>
+            <span class="tag" style="background:var(--card2);color:var(--t2)">write (dashboard.json)</span>
+          </div>
+        </div>
+      </div>
+      <div class="ac-row"><div class="ac-lbl">Output</div><div class="ac-val">Schrijft <code>dashboard.json</code> met 7d revenue/ROAS/profit arrays. Geen approvals nodig — read-only agent.</div></div>
+    </div>
+  </div>
+
+  <!-- LISTER -->
+  <div class="agent-card" style="border-top:3px solid var(--purple)">
+    <div class="ac-header" style="background:var(--p2)">
+      <div class="ac-ico" style="background:rgba(167,139,250,.15)">🏪</div>
+      <div>
+        <div class="ac-name" style="color:var(--purple)">LISTER</div>
+        <div class="ac-role" style="color:rgba(167,139,250,.6)">Store & Listings — event-driven</div>
+      </div>
+    </div>
+    <div class="ac-body">
+      <div class="ac-row"><div class="ac-lbl">Trigger</div><div class="ac-val">OpenClaw main sessie ontvangt "APPROVE product:xyz" → spawnt LISTER sub-agent met product payload</div></div>
+      <div class="ac-row"><div class="ac-lbl">Sessie task</div><div class="ac-val">Genereer productafbeeldingen → schrijf titel/beschrijving → push naar Shopify API → update queue.json status → notificeer Henk</div></div>
+      <div class="ac-row"><div class="ac-lbl">Tools gebruikt</div>
+        <div class="ac-val">
+          <div class="ac-tags">
+            <span class="tag" style="background:var(--p2);color:var(--purple)">exec (Gemini image gen)</span>
+            <span class="tag" style="background:var(--p2);color:var(--purple)">exec (shopify API script)</span>
+            <span class="tag" style="background:var(--card2);color:var(--t2)">write (queue.json update)</span>
+            <span class="tag" style="background:var(--card2);color:var(--t2)">message (Telegram)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMMANDER -->
+  <div class="agent-card" style="border-top:3px solid var(--red)">
+    <div class="ac-header" style="background:var(--r2)">
+      <div class="ac-ico" style="background:rgba(255,69,58,.15)">📊</div>
+      <div>
+        <div class="ac-name" style="color:var(--red)">COMMANDER</div>
+        <div class="ac-role" style="color:rgba(255,69,58,.6)">Google Ads Manager — execute only after approval</div>
+      </div>
+    </div>
+    <div class="ac-body">
+      <div class="ac-row"><div class="ac-lbl">Cron</div><div class="ac-val"><code>0 5 * * 1</code> — maandag 05:00</div></div>
+      <div class="ac-row"><div class="ac-lbl">Sessie task</div><div class="ac-val">Haal search terms report op (14 dagen) → vind wasted spend → schrijf optimize items naar queue.json</div></div>
+      <div class="ac-row"><div class="ac-lbl">Na approval</div><div class="ac-val">OpenClaw ontvangt "APPROVE optimize:xyz" → spawnt COMMANDER execution sub-agent → voegt negatives toe via Google Ads API op campagne-niveau</div></div>
+      <div class="ac-row"><div class="ac-lbl">Leert</div><div class="ac-val">Schrijft waste-patronen naar <code>agents/commander/waste-patterns.md</code>. Opbouw van universele waste-lijst per product-categorie.</div></div>
+    </div>
+  </div>
+</div>
+
+<hr>
+
+<!-- SELF-LEARNING -->
+<div class="section">
+  <div class="sec-eyebrow">Self-learning</div>
+  <h2>Agents leren van elke beslissing</h2>
+  <p>Elke approval of rejection wordt opgeslagen in de agent's eigen memory files. Wekelijks draait een synthesis sub-agent die de patronen analyseert en de agent-configuratie bijwerkt.</p>
+
+  <div class="sub-section">
+    <h3>Memory per agent — twee lagen</h3>
+    <table>
+      <tr><th>Laag</th><th>Locatie</th><th>Inhoud</th></tr>
+      <tr><td>Structureel</td><td><code>agents/[naam]/state.md</code></td><td>Last run, thresholds, succes-percentages</td></tr>
+      <tr><td>Narratief</td><td><code>agents/[naam]/learnings.md</code></td><td>Menselijk leesbare patronen die agent geleerd heeft</td></tr>
+      <tr><td>Uitkomsten</td><td><code>agents/scout/outcomes.json</code></td><td>Elke product-beslissing met 30d resultaat</td></tr>
+    </table>
+  </div>
+
+  <div class="sub-section">
+    <h3>Weekly synthesis — zondag 20:00</h3>
+    <pre><code>SYNTHESIS sub-agent wordt gespawnt:
+1. Lees queue.json — alle beslissingen van afgelopen week
+2. Bereken per agent: approval rate, succes rate, gemiddeld resultaat
+3. Update state.md per agent met nieuwe thresholds
+4. Schrijf samenvatting naar agents/[naam]/learnings.md
+5. Als kritieke regel wijzigt → stuur notificatie naar Henk</code></pre>
+  </div>
+
+  <div class="sub-section">
+    <h3>Cross-agent signalen</h3>
+    <table>
+      <tr><th>Van</th><th>Naar</th><th>Signaal</th></tr>
+      <tr><td>HERALD</td><td>SCOUT</td><td>Store schaalbaar in fashion → SCOUT prioriteert fashion producten</td></tr>
+      <tr><td>SCOUT</td><td>HERALD</td><td>Hoog-scorend product → HERALD monitort die categorie nauwer</td></tr>
+      <tr><td>COMMANDER</td><td>HERALD</td><td>Nieuw waste-patroon → HERALD gebruikt als early warning vóór scale</td></tr>
+    </table>
+  </div>
+</div>
+
+<hr>
+
+<!-- CRON SCHEDULE -->
+<div class="section">
+  <div class="sec-eyebrow">OpenClaw cron schedule</div>
+  <h2>Alle agents als OpenClaw crons</h2>
+  <div class="cron-block">
+    <div class="cron-row header">
+      <div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase">Tijd</div>
+      <div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase">Agent</div>
+      <div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase">Taak</div>
+    </div>
+    <div class="cron-row"><div class="cron-time">02:00 dagelijks</div><div style="font-size:12px;font-weight:800;color:var(--green)">SCOUT</div><div style="font-size:12px;color:var(--t2)">Product research — trends analyseren, scoren, queue vullen</div></div>
+    <div class="cron-row"><div class="cron-time">05:00 maandag</div><div style="font-size:12px;font-weight:800;color:var(--red)">COMMANDER</div><div style="font-size:12px;color:var(--t2)">Keyword audit — search terms 14 dagen, waste berekenen</div></div>
+    <div class="cron-row"><div class="cron-time">06:00 dagelijks</div><div style="font-size:12px;font-weight:800;color:var(--yellow)">HERALD</div><div style="font-size:12px;color:var(--t2)">Performance check — scale voorstellen + alerts genereren</div></div>
+    <div class="cron-row"><div class="cron-time">07:00 dagelijks</div><div style="font-size:12px;font-weight:800;color:var(--blue)">MIDAS</div><div style="font-size:12px;color:var(--t2)">P&amp;L sync — dashboard.json bijwerken met gisteren</div></div>
+    <div class="cron-row"><div class="cron-time">20:00 zondag</div><div style="font-size:12px;font-weight:800;color:var(--purple)">SYNTHESIS</div><div style="font-size:12px;color:var(--t2)">Weekly learning loop — alle agent memory bijwerken</div></div>
+  </div>
+</div>
+
+<hr>
+
+<!-- BUILD ORDER -->
+<div class="section">
+  <div class="sec-eyebrow">Build volgorde</div>
+  <h2>10 stappen — van lege VPS naar V1 live</h2>
+  <div class="build-list">
+    <div class="build-item"><div><div class="bi-title">Gateway config op VPS</div><div class="bi-sub">sessions_send unblocken in openclaw.json. Gateway token veiligstellen. Testen met curl.</div></div></div>
+    <div class="build-item"><div><div class="bi-title">Workspace structuur aanmaken</div><div class="bi-sub">Alle mappen en lege JSON files: queue.json, dashboard.json, agents-status.json, agents/*/state.md</div></div></div>
+    <div class="build-item"><div><div class="bi-title">Caddy configureren op VPS</div><div class="bi-sub">mobile.html serveren + /tools/invoke proxyen naar gateway. HTTPS via auto-cert. Testen via browser.</div></div></div>
+    <div class="build-item"><div><div class="bi-title">Web app koppelen aan gateway</div><div class="bi-sub">mobile.html fetch() calls vervangen — queue.json en dashboard.json via /tools/invoke lezen. Approve buttons sturen sessions_send.</div></div></div>
+    <div class="build-item"><div><div class="bi-title">MIDAS agent bouwen</div><div class="bi-sub">OpenClaw cron → sub-agent sessie → MariaDB + Google Ads query → schrijft echte dashboard.json. Web app toont live data.</div></div></div>
+    <div class="build-item"><div><div class="bi-title">HERALD agent bouwen</div><div class="bi-sub">Meest waardevolle agent. Cron → sub-agent → echte scale/alert items in queue.json → Henk goedkeurt in web app.</div></div></div>
+    <div class="build-item"><div><div class="bi-title">Approval execution in main sessie</div><div class="bi-sub">Main sessie verwerkt "APPROVE scale:xyz" bericht → voert actie uit via Google Ads tools → update queue.json status.</div></div></div>
+    <div class="build-item"><div><div class="bi-title">SCOUT agent bouwen</div><div class="bi-sub">Meest complex. Trends + AliExpress + scoring model. Product cards in queue.json.</div></div></div>
+    <div class="build-item"><div><div class="bi-title">LISTER agent bouwen</div><div class="bi-sub">Triggered door product approval. Afbeeldingen genereren + Shopify push.</div></div></div>
+    <div class="build-item"><div><div class="bi-title">COMMANDER + weekly synthesis</div><div class="bi-sub">Keyword audit + self-learning loop. Na V1 live, zodra er approval-data is om van te leren.</div></div></div>
+  </div>
+</div>
+
+<hr>
+
+<!-- DEFINITION OF DONE -->
+<div class="section">
+  <div class="sec-eyebrow">Definition of done</div>
+  <h2>V1 is live wanneer...</h2>
+  <div class="dod-item"><div class="dod-check"></div>Henk opent de web app → ziet echte ROAS + revenue van gisteren (MIDAS draait)</div>
+  <div class="dod-item"><div class="dod-check"></div>HERALD heeft minimaal 1 scale of alert gegenereerd op basis van echte Google Ads data</div>
+  <div class="dod-item"><div class="dod-check"></div>Approve in de web app → Google Ads budget aangepast binnen 30 seconden</div>
+  <div class="dod-item"><div class="dod-check"></div>Dezelfde approval werkt ook via Telegram (zelfde OpenClaw, zelfde executie)</div>
+  <div class="dod-item"><div class="dod-check"></div>SCOUT heeft minstens 3 producten overnight gevonden en in de queue gezet</div>
+  <div class="dod-item"><div class="dod-check"></div>Alle agent runs gelogd in agents-status.json met timestamp + samenvatting</div>
+  <div class="dod-item"><div class="dod-check"></div>Web app bereikbaar via HTTPS op googleclaw.icarusagency.io</div>
+  <div class="dod-item"><div class="dod-check"></div>Geen externe database, geen aparte backend — alles via OpenClaw gateway</div>
+</div>
+
+<div style="margin-top:64px;text-align:center;font-size:11px;color:rgba(255,255,255,.12)">
+  GoogleClaw — Implementation Blueprint V2 · OpenClaw Native · April 2026 · Icarus Agency
+</div>
+
+</body>
+</html>

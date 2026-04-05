@@ -272,9 +272,36 @@ def main():
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 
-    cfg    = load_json(args.config, {})
+    cfg         = load_json(args.config, {})
     trends_data = load_json(args.trends, {})
-    trends = trends_data.get("trends", []) if isinstance(trends_data, dict) else trends_data
+
+    # ── Freshness check ──────────────────────────────────────────────────────
+    # SCOUT only runs if trends.json was generated today.
+    # TRENDS runs at 00:00 — SCOUT at 10:00 — so 10h window is plenty.
+    # If TRENDS failed or Manus ran long, we bail rather than use stale data.
+    MAX_TRENDS_AGE_HOURS = 12  # generous upper bound
+
+    generated_at = None
+    if isinstance(trends_data, dict):
+        generated_at = trends_data.get("generatedAt")
+
+    if not generated_at:
+        print("[SCOUT] trends.json has no generatedAt timestamp — run TRENDS first")
+        return
+
+    try:
+        ts  = datetime.datetime.fromisoformat(generated_at.replace("Z", "+00:00"))
+        age = (datetime.datetime.now(datetime.timezone.utc) - ts).total_seconds() / 3600
+        if age > MAX_TRENDS_AGE_HOURS:
+            print(f"[SCOUT] trends.json is {age:.1f}h old (max {MAX_TRENDS_AGE_HOURS}h) — "
+                  f"TRENDS may have failed. Skipping run.")
+            return
+        print(f"[SCOUT] trends.json is {age:.1f}h old — fresh enough, continuing.")
+    except Exception as e:
+        print(f"[SCOUT] Could not parse generatedAt '{generated_at}': {e} — skipping.")
+        return
+
+    trends = trends_data.get("trends", [])
 
     if not trends:
         print("[SCOUT] No trends found in trends.json — run TRENDS first")

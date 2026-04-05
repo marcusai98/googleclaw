@@ -1,7 +1,8 @@
 # SCOUT — Daily Product Research Cron
 
 > Model: GPT (openai/gpt-4o-mini)
-> Schedule: Daily at 10:00 (4 hours after TRENDS at 06:00 — Manus can take 2-3h)
+> Schedule: Daily at 10:00 (10 hours after TRENDS at 00:00 — Manus can take 2-3h)
+> Freshness check: auto-aborts if trends.json is older than 12h
 > Trigger: Cron
 
 ---

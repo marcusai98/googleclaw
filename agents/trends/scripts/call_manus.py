@@ -357,9 +357,12 @@ def is_on_cooldown(name: str, new_score: int, history: dict) -> tuple[bool, str]
     return False, "cooldown expired"
 
 def update_history(name: str, score: int, history: dict):
-    """Update seen entry for this trend."""
-    today = datetime.date.today().isoformat()
-    seen  = history.setdefault("seen", {})
+    """Update seen entry + monthly tracking for this trend."""
+    today   = datetime.date.today()
+    ym      = today.strftime("%Y-%m")   # "2026-04"
+    today_s = today.isoformat()
+    seen    = history.setdefault("seen", {})
+    monthly = history.setdefault("monthly", {})  # {name: {"YYYY-MM": score}}
 
     # Find existing key (case-insensitive)
     existing_key = None
@@ -369,16 +372,78 @@ def update_history(name: str, score: int, history: dict):
             break
 
     if existing_key:
-        seen[existing_key]["lastSeen"]      = today
+        seen[existing_key]["lastSeen"]      = today_s
         seen[existing_key]["lastScore"]     = score
         seen[existing_key]["timesReported"] = seen[existing_key].get("timesReported", 0) + 1
     else:
         seen[name] = {
-            "firstSeen":     today,
-            "lastSeen":      today,
+            "firstSeen":     today_s,
+            "lastSeen":      today_s,
             "lastScore":     score,
             "timesReported": 1,
         }
+
+    # Monthly tracking — keep highest score per month
+    if name not in monthly:
+        monthly[name] = {}
+    existing_month_score = monthly[name].get(ym, 0)
+    monthly[name][ym] = max(existing_month_score, score)
+
+
+def load_seasonal_patterns(path: str) -> dict:
+    if Path(path).exists():
+        with open(path) as f:
+            data = json.load(f)
+            return data.get("patterns", {})
+    return {}
+
+
+def apply_seasonal_bonus(candidate_name: str, base_score: int,
+                          patterns: dict, current_month: int) -> tuple[int, str]:
+    """
+    Apply seasonal intelligence bonus to a product's score.
+    Returns (adjusted_score, reason).
+    """
+    # Case-insensitive match
+    pattern = None
+    for k, v in patterns.items():
+        if k.lower().strip() == candidate_name.lower().strip():
+            pattern = v
+            break
+
+    if not pattern:
+        return base_score, ""
+
+    bonus     = 0
+    reasons   = []
+    conf      = pattern.get("confidence", "low")
+    pat_type  = pattern.get("pattern", "")
+
+    # Base bonus from historical confidence
+    bonus += pattern.get("scoreBonus", 0)
+
+    # Currently in strong month window
+    strong_months = pattern.get("strongMonths", [])
+    if current_month in strong_months:
+        bonus += 8
+        reasons.append(f"historically strong in month {current_month}")
+
+    # Anticipation window — we're approaching the strong season
+    anticipate_from = pattern.get("anticipateFromMonth")
+    if anticipate_from and pat_type in ("annual_seasonal", "semi_seasonal"):
+        # Check if we're in anticipation window (2 months before strong season)
+        anticipation_months = [(anticipate_from + i - 1) % 12 + 1 for i in range(2)]
+        if current_month in anticipation_months and current_month not in strong_months:
+            bonus += 5
+            reasons.append(f"anticipation window for peak month {pattern.get('peakMonth')}")
+
+    # High confidence multi-year pattern
+    if pattern.get("yearsObserved", 0) >= 2 and conf == "high":
+        bonus += 5
+        reasons.append(f"{pattern['yearsObserved']} years of data")
+
+    reason_str = f"Seasonal bonus +{bonus}: {', '.join(reasons)}" if reasons else ""
+    return min(100, base_score + bonus), reason_str
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -480,10 +545,11 @@ def score_candidate(candidate: dict, trends_data: dict, kw_data: dict, cfg: dict
 
 def main():
     parser = argparse.ArgumentParser(description="TRENDS Research Pipeline")
-    parser.add_argument("--config",      default="config.json",             help="Path to config.json")
-    parser.add_argument("--output",      default="data/trends.json",        help="Output path")
-    parser.add_argument("--history",     default="data/trends-history.json",help="History file path")
-    parser.add_argument("--candidates",  default=None,                      help="Skip Manus, load candidates JSON directly")
+    parser.add_argument("--config",      default="config.json",                  help="Path to config.json")
+    parser.add_argument("--output",      default="data/trends.json",             help="Output path")
+    parser.add_argument("--history",     default="data/trends-history.json",     help="History file path")
+    parser.add_argument("--seasonal",    default="data/seasonal-patterns.json",  help="Seasonal patterns path")
+    parser.add_argument("--candidates",  default=None,                           help="Skip Manus, load candidates JSON directly")
     args = parser.parse_args()
 
     cfg    = load_config(args.config)
@@ -493,9 +559,12 @@ def main():
 
     print(f"[TRENDS] Starting: {niche} / {market}")
 
-    # Load history
-    history = load_history(args.history)
+    # Load history + seasonal patterns
+    history  = load_history(args.history)
+    patterns = load_seasonal_patterns(args.seasonal)
+    current_month = datetime.date.today().month
     print(f"[TRENDS] History: {len(history.get('seen', {}))} product types tracked")
+    print(f"[TRENDS] Seasonal patterns: {len(patterns)} known")
 
     # Step 1: Manus candidates
     if args.candidates:
@@ -518,7 +587,7 @@ def main():
     print(f"[TRENDS] Fetching Keyword Planner data...")
     kw_data = google_ads_keyword_data(candidates, cfg)
 
-    # Step 4: Score + filter
+    # Step 4: Score + filter + seasonal bonus
     print(f"[TRENDS] Scoring and filtering...")
     scored = []
     for c in candidates:
@@ -526,6 +595,16 @@ def main():
         if not result:
             print(f"[TRENDS] Dropped '{c['name']}' — failed hard filter")
             continue
+
+        # Apply seasonal intelligence bonus
+        adjusted_score, seasonal_reason = apply_seasonal_bonus(
+            c["name"], result["score"], patterns, current_month
+        )
+        if adjusted_score != result["score"]:
+            print(f"[TRENDS] '{c['name']}': {result['score']} → {adjusted_score} ({seasonal_reason})")
+            result["score"] = adjusted_score
+            result["seasonalNote"] = seasonal_reason
+
         if result["score"] < 50:
             print(f"[TRENDS] Dropped '{c['name']}' — score {result['score']} < 50")
             continue

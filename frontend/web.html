@@ -1352,6 +1352,94 @@ async function connectGateway() {
   }
 }
 
+// ===== AGENT RUN =====
+async function runAgent(name, model) {
+  const btn = document.getElementById('run-'+name);
+  if(!btn) return;
+
+  // Set loading state
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.classList.remove('success','error');
+  btn.classList.add('running');
+  btn.textContent = 'Running…';
+
+  try {
+    // Step 1: Fetch the agent prompt (with {{REPO_PATH}} filled)
+    const promptRes = await fetch(`/proxy/agent-prompt/${name}`);
+    if(!promptRes.ok) {
+      throw new Error(`Failed to load prompt: HTTP ${promptRes.status}`);
+    }
+    const promptData = await promptRes.json();
+    const task = promptData.prompt;
+
+    if(!task) {
+      throw new Error('Empty prompt returned');
+    }
+
+    // Step 2: POST to /proxy/tools/invoke with sessions_spawn
+    const spawnPayload = {
+      tool: 'sessions_spawn',
+      params: {
+        task: task,
+        runtime: 'subagent',
+        model: model,
+        runTimeoutSeconds: 600
+      }
+    };
+
+    const invokeRes = await fetch('/proxy/tools/invoke', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(spawnPayload)
+    });
+
+    if(!invokeRes.ok) {
+      const errText = await invokeRes.text();
+      // Check for common errors
+      if(invokeRes.status === 502 || invokeRes.status === 503) {
+        throw new Error('Gateway not connected — check Settings');
+      }
+      if(errText.includes('sessions_spawn') && errText.includes('blocked')) {
+        throw new Error('sessions_spawn blocked — add to gateway allow list');
+      }
+      throw new Error(`Gateway error: ${invokeRes.status}`);
+    }
+
+    const result = await invokeRes.json();
+
+    // Success state
+    btn.classList.remove('running');
+    btn.classList.add('success');
+    btn.textContent = '✓ Started';
+
+    // Show toast/alert
+    console.log(`[GoogleClaw] Agent ${name} spawned:`, result);
+
+    // Reset button after 3s
+    setTimeout(()=>{
+      btn.disabled = false;
+      btn.classList.remove('success');
+      btn.textContent = originalText;
+    }, 3000);
+
+  } catch(e) {
+    console.error(`[GoogleClaw] runAgent(${name}) error:`, e);
+
+    // Error state
+    btn.classList.remove('running');
+    btn.classList.add('error');
+    btn.textContent = '✗ ' + (e.message || 'Error');
+
+    // Reset button after 4s
+    setTimeout(()=>{
+      btn.disabled = false;
+      btn.classList.remove('error');
+      btn.textContent = originalText;
+    }, 4000);
+  }
+}
+
 function populateFromConfig(cfg) {
   if(!cfg) return;
   const t = cfg.thresholds || {};

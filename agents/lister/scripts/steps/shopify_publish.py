@@ -40,20 +40,42 @@ def get_shopify_token(cfg: dict) -> str:
     return ""
 
 
-def build_variant(price: float, compare_at: float | None) -> list:
+def build_variants(candidate: dict, price: float, compare_at: float | None) -> list:
     """
-    Build a single default Shopify variant.
-    Variants (size/color) can be added manually in Shopify after listing.
+    Build Shopify variant array from cjVariants captured by SCOUT.
+    If no variant data available → single default variant.
+    price is the computed selling price (from pricing.py).
+    All variants share the same selling price — CJ variant prices are cost references only.
     """
-    return [{
-        "price":                str(round(price, 2)),
-        "compare_at_price":     str(round(compare_at, 2)) if compare_at else None,
-        "inventory_management": "shopify",
-        "fulfillment_service":  "manual",
-        "requires_shipping":    True,
-        "taxable":              True,
-        "inventory_quantity":   99,
-    }]
+    cj_variants = candidate.get("cjVariants", [])
+
+    if not cj_variants:
+        return [{
+            "price":                str(round(price, 2)),
+            "compare_at_price":     str(round(compare_at, 2)) if compare_at else None,
+            "inventory_management": "shopify",
+            "fulfillment_service":  "manual",
+            "requires_shipping":    True,
+            "taxable":              True,
+            "inventory_quantity":   99,
+        }]
+
+    shopify_variants = []
+    for v in cj_variants:
+        variant = {
+            "option1":              v.get("name", "Default"),
+            "sku":                  v.get("sku", ""),
+            "price":                str(round(price, 2)),
+            "compare_at_price":     str(round(compare_at, 2)) if compare_at else None,
+            "inventory_management": "shopify",
+            "fulfillment_service":  "manual",
+            "requires_shipping":    True,
+            "taxable":              True,
+            "inventory_quantity":   99,
+        }
+        shopify_variants.append(variant)
+
+    return shopify_variants
 
 
 def upload_image(domain: str, token: str, image: dict, product_id: int, position: int) -> bool:
@@ -158,8 +180,8 @@ def publish(candidate: dict, pricing: dict, copy: dict, images: list,
     price      = pricing["price"]
     compare_at = pricing.get("compareAtPrice")
 
-    # Build single default variant
-    variants = build_variant(price, compare_at)
+    # Build variants from SCOUT candidate data (cjVariants)
+    variants = build_variants(candidate, price, compare_at)
 
     # Build product payload
     product_payload = {
@@ -171,7 +193,7 @@ def publish(candidate: dict, pricing: dict, copy: dict, images: list,
             "tags":             ", ".join(collection_data["tags"]),
             "status":           status,
             "variants":         variants,
-            "options":          [],
+            "options":          [{"name": "Variant"}] if len(variants) > 1 else [],
             "metafields": [
                 {
                     "namespace": "seo",

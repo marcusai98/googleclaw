@@ -39,13 +39,37 @@ def search_products(keyword: str, token: str, limit: int = 20) -> list:
 
 
 def parse_product(raw: dict) -> dict:
-    """Normalize a CJ product to SCOUT candidate format."""
-    variants   = raw.get("variants", []) or []
-    prices     = [float(v.get("variantSellPrice", 0)) for v in variants if v.get("variantSellPrice")]
-    min_price  = min(prices) if prices else 0.0
+    """
+    Normalize a CJ product to SCOUT candidate format.
+    Captures full variant structure (name, SKU, price) so LISTER can build
+    proper Shopify variants without needing to re-call CJ.
+    """
+    raw_variants = raw.get("variants", []) or []
+    prices       = [float(v.get("variantSellPrice", 0)) for v in raw_variants if v.get("variantSellPrice")]
+    min_price    = min(prices) if prices else 0.0
+    max_price    = max(prices) if prices else 0.0
 
-    ship_time  = raw.get("deliveryTime", "") or ""
-    # Parse "10-20 days" → take max
+    # Normalize variant list for downstream use by LISTER
+    cj_variants = []
+    seen_names  = set()
+    for v in raw_variants:
+        name  = (v.get("variantNameEn") or v.get("variantSku") or "").strip()
+        sku   = (v.get("variantSku") or "").strip()
+        price = float(v.get("variantSellPrice", 0) or 0)
+        img   = (v.get("variantImage") or "").strip()
+
+        if not name or name.lower() in seen_names:
+            continue
+        seen_names.add(name.lower())
+
+        cj_variants.append({
+            "name":   name,
+            "sku":    sku,
+            "price":  round(price, 2),
+            "image":  img,
+        })
+
+    ship_time = raw.get("deliveryTime", "") or ""
     try:
         days = int(str(ship_time).split("-")[-1].strip().split(" ")[0])
     except (ValueError, IndexError):
@@ -56,7 +80,9 @@ def parse_product(raw: dict) -> dict:
         "source":             "cj",
         "cjProductId":        raw.get("pid", ""),
         "cjUrl":              raw.get("productUrl", ""),
-        "cjPrice":            round(min_price, 2),
+        "cjPrice":            round(min_price, 2),   # lowest variant price (cost floor reference)
+        "cjPriceMax":         round(max_price, 2),   # highest variant price
+        "cjVariants":         cj_variants,           # full variant list → passed to LISTER
         "estimatedShipping":  days,
         "inStock":            raw.get("productStatus", "") == "PRODUCT_VALID",
         "imageUrl":           raw.get("productImage", ""),

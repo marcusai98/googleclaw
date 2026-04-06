@@ -608,6 +608,23 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:'Inter',s
     </div>
     <div class="scroll" style="flex:1;max-width:640px">
 
+      <!-- Gateway -->
+      <div class="sec" style="margin-bottom:8px"><div class="sec-t">OpenClaw Gateway</div></div>
+      <div class="card" style="margin-bottom:4px" id="gw-card">
+        <div style="padding:14px 16px;border-bottom:1px solid var(--line2)">
+          <div style="font-size:13px;font-weight:700;margin-bottom:8px">Gateway URL</div>
+          <input id="gw-url" type="text" placeholder="http://localhost:63783" style="width:100%;box-sizing:border-box;background:var(--card2);border:1px solid var(--line);border-radius:8px;color:var(--t1);font-size:12px;padding:8px 10px;font-family:inherit;outline:none" />
+        </div>
+        <div style="padding:14px 16px">
+          <div style="font-size:13px;font-weight:700;margin-bottom:8px">Gateway Token</div>
+          <input id="gw-token" type="password" placeholder="Paste your gateway token" style="width:100%;box-sizing:border-box;background:var(--card2);border:1px solid var(--line);border-radius:8px;color:var(--t1);font-size:12px;padding:8px 10px;font-family:inherit;outline:none" />
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;padding-top:8px">
+        <button onclick="connectGateway()" style="padding:8px 18px;border-radius:9px;background:var(--acc);border:none;color:#000;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Connect & load config</button>
+        <div id="gw-status" style="font-size:11px;color:var(--t2)"></div>
+      </div>
+
       <!-- Connections -->
       <div class="sec" style="margin-bottom:8px"><div class="sec-t">Connections</div></div>
       <div class="card" style="margin-bottom:20px">
@@ -1138,38 +1155,112 @@ document.addEventListener('click', e => {
   }
 });
 
+// ===== GATEWAY + CONFIG =====
+let gwConfig = null; // live config.json object
+let gwConfigPath = null;
+
+function gwSave() { localStorage.setItem('gc_gw_url', document.getElementById('gw-url').value.trim()); localStorage.setItem('gc_gw_token', document.getElementById('gw-token').value.trim()); }
+function gwLoad() { const u=localStorage.getItem('gc_gw_url')||''; const t=localStorage.getItem('gc_gw_token')||''; if(u) document.getElementById('gw-url').value=u; if(t) document.getElementById('gw-token').value=t; if(u&&t) connectGateway(); }
+
+async function gwInvoke(tool, params) {
+  const url = (document.getElementById('gw-url').value.trim()).replace(/\/$/, '');
+  const token = document.getElementById('gw-token').value.trim();
+  const res = await fetch(`${url}/tools/invoke`, {
+    method: 'POST',
+    headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${token}` },
+    body: JSON.stringify({ tool, params })
+  });
+  if(!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+async function connectGateway() {
+  const st = document.getElementById('gw-status');
+  st.textContent = 'Connecting…'; st.style.color='var(--t2)';
+  gwSave();
+  try {
+    // Find config.json — try workspace/googleclaw/config.json then workspace/config.json
+    let result, path;
+    const candidates = [
+      '/Users/neo/.openclaw/workspace/googleclaw/config.json',
+      './config.json', 'config.json'
+    ];
+    for(const p of candidates) {
+      try { result = await gwInvoke('read', { path: p }); if(result && !result.error) { path=p; break; } } catch(e){}
+    }
+    if(!path) throw new Error('config.json niet gevonden');
+    gwConfigPath = path;
+    const raw = result.content || result.text || result;
+    gwConfig = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    populateFromConfig(gwConfig);
+    st.textContent = '✓ Connected — config loaded'; st.style.color='var(--green)';
+  } catch(e) {
+    st.textContent = `✗ ${e.message}`; st.style.color='var(--red)';
+  }
+}
+
+function populateFromConfig(cfg) {
+  if(!cfg) return;
+  const t = cfg.thresholds || {};
+  if(t.scale_roas  !== undefined) { thresholds.scale    = t.scale_roas;  renderThresh('scale'); }
+  if(t.alert_roas  !== undefined) { thresholds.alert    = t.alert_roas;  renderThresh('alert'); }
+  if(t.alert_days  !== undefined) { thresholds.days     = t.alert_days;  renderThresh('days'); }
+  if(t.min_price   !== undefined) { thresholds.minprice = t.min_price;   renderThresh('minprice'); }
+  if(t.autopub_score !== undefined){ thresholds.autopub = t.autopub_score; renderThresh('autopub'); }
+  if(t.daily_limit !== undefined) { thresholds.products = t.daily_limit; renderThresh('products'); }
+  // Populate store info in sidebar subtitle if present
+  const inst = cfg.instance || {};
+  if(inst.name) { const el=document.querySelector('.mh-sub'); if(el && el.closest('#v-settings')) el.textContent=inst.name; }
+}
+
+async function saveThresholdsToConfig(section) {
+  const btn = document.getElementById('save-'+section);
+  if(!gwConfig || !gwConfigPath) {
+    if(btn) { btn.textContent='⚠ Connect gateway first'; setTimeout(()=>{ btn.textContent='Save changes'; },2000); }
+    return;
+  }
+  if(!gwConfig.thresholds) gwConfig.thresholds = {};
+  const t = gwConfig.thresholds;
+  if(section==='midas') { t.scale_roas=thresholds.scale; t.alert_roas=thresholds.alert; t.alert_days=thresholds.days; }
+  if(section==='scout') { t.min_price=thresholds.minprice; t.autopub_score=thresholds.autopub; t.daily_limit=thresholds.products; }
+  try {
+    await gwInvoke('write', { path: gwConfigPath, content: JSON.stringify(gwConfig, null, 2) });
+    if(btn) { btn.textContent='Saved ✓'; btn.style.background='var(--green)'; setTimeout(()=>{ btn.textContent='Save changes'; btn.style.background='var(--acc)'; },2000); }
+  } catch(e) {
+    if(btn) { btn.textContent=`✗ ${e.message}`; setTimeout(()=>{ btn.textContent='Save changes'; },3000); }
+  }
+}
+
 // ===== SETTINGS =====
 const thresholds = { scale:3.0, alert:1.0, days:3, autopub:75, products:10, minprice:40 };
 const threshFmt = {
   scale:    v => v.toFixed(1)+'x',
   alert:    v => v.toFixed(1)+'x',
   days:     v => v+'d',
-  autopub:  v => v,
-  products: v => v,
-  minprice: v => '€'+v
+  autopub:  v => String(Math.round(v)),
+  products: v => String(Math.round(v)),
+  minprice: v => '€'+Math.round(v)
 };
+function renderThresh(key) {
+  const el = document.getElementById('thresh-'+key);
+  if(el) el.textContent = threshFmt[key](thresholds[key]);
+}
 function adjThresh(key, delta) {
   const min = {scale:1.0, alert:0.5, days:1, autopub:50, products:5, minprice:10};
   thresholds[key] = Math.max(min[key]||0, Math.round((thresholds[key]+delta)*10)/10);
-  const el = document.getElementById('thresh-'+key);
-  if(el) el.textContent = threshFmt[key](thresholds[key]);
-  // Mark section as unsaved
-  const btn = document.getElementById('save-' + ({'scale':'midas','alert':'midas','days':'midas','autopub':'scout','products':'scout','minprice':'scout'}[key]));
-  if(btn) { btn.textContent = 'Save changes ●'; btn.style.opacity='1'; }
+  renderThresh(key);
+  const sectionMap = {scale:'midas',alert:'midas',days:'midas',autopub:'scout',products:'scout',minprice:'scout'};
+  const btn = document.getElementById('save-'+sectionMap[key]);
+  if(btn && btn.textContent==='Save changes') btn.textContent='Save changes ●';
 }
-function saveThresholds(section) {
-  const btn = document.getElementById('save-'+section);
-  if(btn) { btn.textContent = 'Saved ✓'; btn.style.background='var(--green)'; setTimeout(()=>{ btn.textContent='Save changes'; btn.style.background='var(--acc)'; },2000); }
-  // In production: POST thresholds to gateway → config.json update
-  console.log('Thresholds saved:', thresholds);
-}
+function saveThresholds(section) { saveThresholdsToConfig(section); }
 function toggleSetting(id) {
   const el = document.getElementById('tog-'+id);
   if(el) el.classList.toggle('active');
 }
 
 // ===== INIT =====
-window.addEventListener('load',()=>setTimeout(()=>hcDraw('rev'),100));
+window.addEventListener('load',()=>{ setTimeout(()=>hcDraw('rev'),100); gwLoad(); });
 window.addEventListener('resize',()=>{hcDraw('rev');});
 document.addEventListener('keydown',e=>{
   if(document.getElementById('v-inbox').classList.contains('active')){

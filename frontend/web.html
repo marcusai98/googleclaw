@@ -133,8 +133,30 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:'Inter',s
 .conn-row:last-child{border-bottom:none;}
 .cdot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
 
-/* ── INBOX ── */
+/* ── INBOX A3 ── */
 .inbox-layout{display:flex;flex:1;overflow:hidden;}
+/* icon nav */
+.ib-gnav{width:54px;border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:center;padding:12px 0;gap:4px;flex-shrink:0;}
+.ib-gtab{width:38px;height:46px;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:.15s;gap:2px;}
+.ib-gtab:hover{background:var(--card);}
+.ib-gtab.active{background:var(--card2);}
+.ib-gtab-ico{font-size:16px;line-height:1;}
+.ib-gtab-n{font-size:8px;font-weight:700;line-height:1;}
+/* items column */
+.ib-items{width:240px;border-right:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0;}
+.ib-items-hdr{padding:13px 14px 10px;border-bottom:2px solid var(--line);flex-shrink:0;}
+.ib-items-title{font-size:12px;font-weight:700;}
+.ib-items-sub{font-size:10px;color:var(--t2);margin-top:2px;}
+.ib-items-list{flex:1;overflow-y:auto;}
+.ib-row{display:flex;align-items:center;gap:9px;padding:10px 14px;border-bottom:1px solid var(--line2);cursor:pointer;transition:.1s;}
+.ib-row:hover{background:var(--card);}
+.ib-row.sel{background:var(--card2);border-left:2px solid var(--acc);}
+.ib-ico{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
+.ib-rb{flex:1;min-width:0;}
+.ib-rname{font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ib-rmeta{font-size:9px;color:var(--t2);margin-top:2px;}
+.ib-rval{font-size:12px;font-weight:800;flex-shrink:0;}
+/* detail */
 .inbox-list{width:320px;flex-shrink:0;border-right:1px solid var(--line);overflow-y:auto;overflow-x:hidden;}
 .inbox-list::-webkit-scrollbar{width:3px;}
 .inbox-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.06);border-radius:2px;}
@@ -423,19 +445,41 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:'Inter',s
   <div class="view" id="v-inbox">
     <div class="inbox-layout">
 
-      <!-- List panel -->
-      <div class="inbox-list" id="inbox-list">
-        <div class="il-header">
-          <div class="il-title">Inbox</div>
-          <div class="il-count" id="il-count">7 pending</div>
+      <!-- Icon nav -->
+      <div class="ib-gnav" id="ib-gnav">
+        <div class="ib-gtab active" id="ibt-alert" onclick="ibTab('alert',this)" title="Alerts">
+          <span class="ib-gtab-ico">⚠️</span>
+          <span class="ib-gtab-n" id="ibn-alert" style="color:var(--red)">1</span>
         </div>
-        <!-- items injected by JS -->
+        <div class="ib-gtab" id="ibt-scale" onclick="ibTab('scale',this)" title="Scale">
+          <span class="ib-gtab-ico">📈</span>
+          <span class="ib-gtab-n" id="ibn-scale" style="color:var(--green)">2</span>
+        </div>
+        <div class="ib-gtab" id="ibt-product" onclick="ibTab('product',this)" title="New products">
+          <span class="ib-gtab-ico">📦</span>
+          <span class="ib-gtab-n" id="ibn-product" style="color:var(--acc)">3</span>
+        </div>
+        <div class="ib-gtab" id="ibt-optimize" onclick="ibTab('optimize',this)" title="Optimize">
+          <span class="ib-gtab-ico">⚙️</span>
+          <span class="ib-gtab-n" id="ibn-optimize" style="color:var(--yellow)">1</span>
+        </div>
+      </div>
+
+      <!-- Items column -->
+      <div class="ib-items">
+        <div class="ib-items-hdr" id="ib-items-hdr">
+          <div class="ib-items-title" id="ib-items-title">⚠ Alerts</div>
+          <div class="ib-items-sub" id="ib-items-sub">1 item requires attention</div>
+        </div>
+        <div class="ib-items-list" id="ib-items-list">
+          <!-- injected by ibTab() -->
+        </div>
       </div>
 
       <!-- Detail panel -->
       <div class="inbox-detail" id="inbox-detail">
         <div class="id-scroll" id="id-scroll">
-          <div class="id-empty">
+          <div class="id-empty" id="id-empty">
             <div style="font-size:40px;opacity:.3">📬</div>
             <div style="font-size:14px;font-weight:700;color:var(--t2)">Select an item</div>
           </div>
@@ -813,13 +857,80 @@ function nav(id) {
   if(id==='analytics') setTimeout(renderAnalyticsChart, 80);
 }
 
-// ===== INBOX =====
+// ===== INBOX A3 =====
+const IB_GROUPS = {
+  alert:    { label:'⚠ Alerts',             sub: n=>`${n} item${n!==1?'s':''} require attention`,  color:'var(--red)',    accentBorder:'var(--red)' },
+  scale:    { label:'📈 Scale opportunities', sub: n=>`${n} item${n!==1?'s':''} ready to scale`,    color:'var(--green)',  accentBorder:'var(--green)' },
+  product:  { label:'📦 New products',        sub: n=>`${n} candidate${n!==1?'s':''} from SCOUT`,   color:'var(--acc)',    accentBorder:'var(--acc)' },
+  optimize: { label:'⚙ Optimize',            sub: n=>`${n} product${n!==1?'s':''} need attention`, color:'var(--yellow)', accentBorder:'var(--yellow)' },
+};
+let ibActiveType = 'alert';
+
+function ibTab(type, btn) {
+  ibActiveType = type;
+  document.querySelectorAll('.ib-gtab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderIbItems(type);
+  // Auto-select first item in this group
+  const first = items.find(i=>!i.done && i.type===type);
+  if(first) selectItem(first.id); else {
+    document.getElementById('id-scroll').innerHTML='<div class="id-empty"><div style="font-size:40px;opacity:.3">✅</div><div style="font-size:14px;font-weight:700;color:var(--t2)">All done</div></div>';
+    document.getElementById('action-bar').classList.add('btn-disabled');
+    selectedId = null;
+  }
+}
+
+function renderIbItems(type) {
+  const grp = IB_GROUPS[type] || IB_GROUPS.product;
+  const pending = items.filter(i=>!i.done && i.type===type);
+  // Update header
+  document.getElementById('ib-items-title').textContent = grp.label;
+  document.getElementById('ib-items-title').style.color = grp.color;
+  document.getElementById('ib-items-sub').textContent   = grp.sub(pending.length);
+  document.getElementById('ib-items-hdr').style.borderBottomColor = grp.accentBorder;
+  // Render rows
+  const list = document.getElementById('ib-items-list');
+  list.innerHTML = '';
+  if(pending.length===0){
+    list.innerHTML='<div style="padding:32px 14px;text-align:center;color:var(--t2);font-size:12px">Nothing here</div>';
+    return;
+  }
+  pending.forEach(item=>{
+    const el = document.createElement('div');
+    el.className = 'ib-row' + (item.id===selectedId?' sel':'');
+    el.id = 'ibr-'+item.id;
+    const ico   = {product:'🔍',scale:'📈',optimize:'📊',alert:'⚠️',feed:'🏪'}[item.type]||'📋';
+    const icoBg = {product:'var(--b2)',scale:'var(--g2)',optimize:'var(--y2)',alert:'var(--r2)',feed:'var(--p2)'}[item.type]||'var(--card2)';
+    const val   = {alert:item.roas||'!',scale:item.roas||'↑',product:item.score||'–',optimize:'!'}[item.type]||'–';
+    const valColor = {alert:'var(--red)',scale:'var(--green)',product:'var(--acc)',optimize:'var(--yellow)'}[item.type]||'var(--t2)';
+    el.innerHTML=`
+      <div class="ib-ico" style="background:${icoBg}">${ico}</div>
+      <div class="ib-rb">
+        <div class="ib-rname">${item.name||item.title}</div>
+        <div class="ib-rmeta">${item.agent} · ${item.sub||''}</div>
+      </div>
+      <span class="ib-rval" style="color:${valColor}">${val}</span>`;
+    el.onclick=()=>{
+      document.querySelectorAll('.ib-row').forEach(r=>r.classList.remove('sel'));
+      el.classList.add('sel');
+      selectItem(item.id);
+    };
+    list.appendChild(el);
+  });
+}
+
+function updateIbBadges() {
+  ['alert','scale','product','optimize'].forEach(type=>{
+    const n = items.filter(i=>!i.done && i.type===type).length;
+    const el = document.getElementById('ibn-'+type);
+    if(el) { el.textContent=n; el.style.opacity = n>0?'1':'0.3'; }
+  });
+}
+
 function renderInboxList() {
-  const list = document.getElementById('inbox-list');
+  renderIbItems(ibActiveType);
+  updateIbBadges();
   const pending = items.filter(i=>!i.done);
-  // Clear existing items (keep header)
-  Array.from(list.children).forEach(c=>{if(!c.classList.contains('il-header'))c.remove();});
-  document.getElementById('il-count').textContent = pending.length + ' pending';
 
   if(pending.length===0){
     const z=document.createElement('div');
@@ -994,6 +1105,7 @@ function updateBadge() {
   const bdg=document.getElementById('inbox-bdg');
   if(n>0){bdg.textContent=n;bdg.style.display='flex';}
   else bdg.style.display='none';
+  updateIbBadges();
 }
 
 // ===== HOME CHART =====
@@ -1288,7 +1400,15 @@ function toggleSetting(id) {
 }
 
 // ===== INIT =====
-window.addEventListener('load',()=>{ setTimeout(()=>hcDraw('rev'),100); gwLoad(); });
+window.addEventListener('load',()=>{
+  setTimeout(()=>hcDraw('rev'),100);
+  gwLoad();
+  // Init inbox A3 — show alerts tab on first open
+  renderIbItems('alert');
+  updateIbBadges();
+  const firstAlert = items.find(i=>!i.done && i.type==='alert');
+  if(firstAlert) { selectedId=firstAlert.id; setTimeout(()=>{ document.querySelectorAll('.ib-row').forEach(r=>r.classList.remove('sel')); const el=document.getElementById('ibr-'+firstAlert.id); if(el)el.classList.add('sel'); renderDetail(firstAlert.id); document.getElementById('action-bar').classList.remove('btn-disabled'); },50); }
+});
 window.addEventListener('resize',()=>{hcDraw('rev');});
 document.addEventListener('keydown',e=>{
   if(document.getElementById('v-inbox').classList.contains('active')){

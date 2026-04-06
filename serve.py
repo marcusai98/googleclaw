@@ -25,6 +25,10 @@ SCRIPT_DIR   = os.path.dirname(os.path.abspath(__file__))
 CONFIG_PATH  = os.path.join(SCRIPT_DIR, "config.json")
 FRONTEND_DIR = os.path.join(SCRIPT_DIR, "frontend")
 
+# GoogleClaw Google OAuth app — set via environment variables in docker-compose.yml
+GC_GOOGLE_CLIENT_ID     = os.environ.get("GC_GOOGLE_CLIENT_ID", "")
+GC_GOOGLE_CLIENT_SECRET = os.environ.get("GC_GOOGLE_CLIENT_SECRET", "")
+
 def load_config():
     if not os.path.exists(CONFIG_PATH):
         print(f"[serve] ⚠  config.json not found at {CONFIG_PATH}")
@@ -265,8 +269,8 @@ window.GC_BOOTSTRAP = {{
     def _google_auth_start(self):
         length = int(self.headers.get("Content-Length", 0))
         body   = json.loads(self.rfile.read(length))
-        cid      = body.get("clientId", "").strip()
-        csecret  = body.get("clientSecret", "").strip()
+        cid      = body.get("clientId", "").strip() or GC_GOOGLE_CLIENT_ID
+        csecret  = body.get("clientSecret", "").strip() or GC_GOOGLE_CLIENT_SECRET
         dev_tok  = body.get("developerToken", "").strip()
         port     = self.server.server_address[1]
         redirect = f"http://localhost:{port}/setup/google-auth/callback"

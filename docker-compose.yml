@@ -11,6 +11,10 @@ services:
     restart: unless-stopped
     environment:
       - GC_HOST=0.0.0.0
+      # Optional: pre-fill Google OAuth app credentials (Desktop app type)
+      # Leave blank to let users enter their own in step 3 of the setup wizard
+      - GC_GOOGLE_CLIENT_ID=
+      - GC_GOOGLE_CLIENT_SECRET=
     command: >
       sh -c "
         apt-get update -qq &&

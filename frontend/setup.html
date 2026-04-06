@@ -597,31 +597,35 @@
                 </div>
 
                 <div class="info-box">
-                    <strong>Two things needed before connecting:</strong><br><br>
-                    <strong>1. Developer Token</strong> — Google Ads → Admin (gear icon) → API Center → copy your Developer Token.<br><br>
-                    <strong>2. Google Cloud OAuth credentials</strong> — <a href="https://console.cloud.google.com" target="_blank" style="color:#FD6737">console.cloud.google.com</a> → New project → Enable Google Ads API → Credentials → Create OAuth 2.0 Client ID (type: Web application) → add Authorized redirect URI: <code id="oauthRedirectUri">http://localhost:8080/setup/google-auth/callback</code> → copy Client ID + Client Secret.
+                    GoogleClaw heeft een ingebouwde Google OAuth app — je hoeft geen Google Cloud project aan te maken.<br><br>
+                    Enige wat je nodig hebt: je <strong>Developer Token</strong>. Die vind je in Google Ads → Admin (tandwiel) → <strong>API Center</strong>.
                 </div>
 
                 <div class="form-group">
                     <label>Developer Token</label>
                     <div class="input-wrapper">
-                        <input type="password" id="gads_dev_token" name="google_ads_developer_token" class="password-field" placeholder="From Google Ads → API Center">
+                        <input type="password" id="gads_dev_token" name="google_ads_developer_token" class="password-field" placeholder="From Google Ads → Admin → API Center">
                         <button type="button" class="toggle-password" onclick="togglePassword(this)">Show</button>
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label>Google Cloud Client ID</label>
-                    <input type="text" id="gads_client_id" name="google_ads_oauth_client_id" placeholder="xxxx.apps.googleusercontent.com">
-                </div>
-
-                <div class="form-group">
-                    <label>Google Cloud Client Secret</label>
-                    <div class="input-wrapper">
-                        <input type="password" id="gads_client_secret" name="google_ads_oauth_client_secret" class="password-field">
-                        <button type="button" class="toggle-password" onclick="togglePassword(this)">Show</button>
+                <!-- Advanced: override Google OAuth app (optional) -->
+                <details style="margin-top:12px">
+                    <summary style="color:#636D8B;font-size:12px;cursor:pointer">Advanced: use your own Google Cloud credentials</summary>
+                    <div style="margin-top:10px">
+                        <div class="form-group">
+                            <label>Client ID <span style="color:#636D8B;font-size:11px">(optional override)</span></label>
+                            <input type="text" id="gads_client_id" name="google_ads_oauth_client_id" placeholder="Leave blank to use built-in">
+                        </div>
+                        <div class="form-group">
+                            <label>Client Secret <span style="color:#636D8B;font-size:11px">(optional override)</span></label>
+                            <div class="input-wrapper">
+                                <input type="password" id="gads_client_secret" name="google_ads_oauth_client_secret" class="password-field">
+                                <button type="button" class="toggle-password" onclick="togglePassword(this)">Show</button>
+                            </div>
+                        </div>
                     </div>
-                </div>
+                </details>
 
                 <button type="button" class="btn btn-test" id="googleConnectBtn" onclick="connectGoogle()" style="width:100%;margin-bottom:12px">
                     Connect with Google

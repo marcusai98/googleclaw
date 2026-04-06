@@ -1,254 +1,290 @@
 # GoogleClaw — Installation Guide
-*This file doubles as a BOOTSTRAP.md for OpenClaw. If you are an AI agent reading this: follow every step in order, execute commands via exec tool, ask the user before any step that requires credentials or manual action, and delete this file when setup is complete. Start at Step 0 — check and install all system dependencies automatically before proceeding.*
+
+*This file doubles as a BOOTSTRAP.md for OpenClaw.*
 
 ---
 
-## What is GoogleClaw?
-GoogleClaw is a multi-agent orchestrator for Google Ads dropshipping stores. It runs on top of OpenClaw — your AI gateway. Agents discover trending products, research candidates, list them on Shopify, and monitor ad performance. Everything is controlled from a local web interface.
-
----
-
-## Step 0 — System dependencies (agent: run these checks automatically)
-
-*These must be installed before anything else. On a fresh Mac, run these once manually — or if you are an agent, check each one via exec and install missing items automatically.*
-
-### 0a — Homebrew (macOS only)
-Check: `which brew`
-If missing:
-```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-```
-
-### 0b — Node.js + npm
-Check: `node --version && npm --version`
-If missing:
-```bash
-brew install node
-```
-On Linux (Ubuntu/Debian):
-```bash
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt-get install -y nodejs
-```
-
-### 0c — OpenClaw
-Check: `openclaw --version`
-If missing:
-```bash
-npm install -g openclaw
-```
-
-### 0d — Python 3.10+
-Check: `python3 --version`
-If missing:
-```bash
-brew install python3        # macOS
-sudo apt install python3    # Ubuntu/Debian
-```
-
-### 0e — pip
-Check: `pip3 --version`
-If missing:
-```bash
-python3 -m ensurepip --upgrade
-```
-
-### 0f — git
-Check: `git --version`
-If missing:
-```bash
-brew install git            # macOS
-sudo apt install git        # Ubuntu/Debian
-```
-
-### 0g — Start OpenClaw gateway
-```bash
-openclaw gateway start
-```
-Verify: `openclaw gateway status` → should say running.
-
-*Agent: once all checks pass, continue to Step 1 automatically.*
-
----
-
-## Prerequisites (accounts + API keys — must be ready before Step 3)
-
-Before running setup, make sure you have:
-- [ ] A Shopify store with Admin API access
-- [ ] A Google Ads account (MCC or single account)
-- [ ] A CJ Dropshipping account
-- [ ] An Apify account (free tier works)
-- [ ] API keys for: OpenAI, Anthropic, Gemini, Manus
-
----
-
-## Step 1 — Clone the repo
+## FOR HUMANS — Two terminal commands, then everything via chat
 
 ```bash
 git clone https://github.com/marcusai98/googleclaw
-cd googleclaw
-pip3 install -r requirements.txt
+cp googleclaw/INSTALL.md ~/.openclaw/workspace/BOOTSTRAP.md
 ```
+
+Open your OpenClaw chat (Telegram). The agent will handle everything from here.
 
 ---
 
-## Step 2 — Run setup
+## FOR THE AGENT — Read this and execute every step conversationally
+
+You are setting up GoogleClaw for the owner. Do NOT run setup.py — instead, ask each question via chat message, collect the answers, and write config.json yourself using the write tool. This is the preferred onboarding path.
+
+Work through the steps below in order. After each group of questions, confirm before moving to the next.
+
+---
+
+### STEP 0 — Check system dependencies
+
+Run these checks via exec tool. Install anything missing automatically.
 
 ```bash
-python3 setup.py
+# Check and install each:
+which brew || /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+node --version || brew install node || (curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && apt-get install -y nodejs)
+python3 --version || (brew install python3 2>/dev/null || apt install -y python3)
+pip3 --version || python3 -m ensurepip --upgrade
+git --version || (brew install git 2>/dev/null || apt install -y git)
 ```
 
-This interactive script will:
-- Ask for your store name, niche, and market
-- Ask for all API keys (Shopify, Google Ads, CJ, Apify, OpenAI, Anthropic, Gemini, Manus)
-- Set your performance thresholds (scale ROAS, alert ROAS, minimum product price)
-- Create the workspace directory structure
-- Apply `chmod 600` to `config.json` immediately
-- Show a security checklist (Shopify API scopes)
-- Ask you to configure the gateway (step below)
-- Register OpenClaw crons for TRENDS and SCOUT automatically
+Then install Python dependencies:
+```bash
+cd ~/googleclaw && pip3 install -r requirements.txt --break-system-packages 2>/dev/null || pip3 install -r requirements.txt
+```
 
-**Do not skip any steps.** All API keys are required for agents to function.
+Confirm OpenClaw gateway is running:
+```bash
+openclaw gateway status
+```
+
+Tell the owner which dependencies were installed and confirm all checks passed.
 
 ---
 
-## Step 3 — Configure the OpenClaw gateway
+### STEP 1 — Ask store information (via chat)
 
-GoogleClaw triggers agents by spawning OpenClaw sessions from the browser UI. For this to work, `sessions_spawn` must be allowed over the gateway's HTTP endpoint.
+Ask the owner (one message, not separate messages):
 
-Add this to your `~/.openclaw/openclaw.json`:
+> "Laten we GoogleClaw instellen. Ik heb een paar dingen nodig:
+> 1. Store naam (bijv. Sophia Fashion)
+> 2. Jouw naam
+> 3. Naam voor je GoogleClaw agent (bijv. ARIA, NOVA, APEX)
+> 4. Tijdzone (standaard: Europe/Amsterdam)
+> 5. Niche (bijv. women's fashion, home decor)
+> 6. Markt (bijv. Netherlands, Belgium)
+> 7. Taal van de store (bijv. Dutch)"
+
+Wait for all answers before continuing.
+
+---
+
+### STEP 2 — Ask Shopify credentials (via chat)
+
+Explain first:
+> "Voor Shopify heb ik je **Client ID** en **Client Secret** nodig (geen statische token meer — dit is de nieuwe methode sinds 2026).
+>
+> Ga naar: Shopify Admin → Settings → Apps → **Develop apps** → Create app → naam: GoogleClaw
+> Configuration → Admin API → vink aan: ✅ write_products ✅ read_products
+> Sla op → API credentials → kopieer **Client ID** en **Client secret**
+>
+> Ook nodig: je store domein (bijv. mijn-store.myshopify.com)"
+
+Wait for: storeDomain, clientId, clientSecret.
+
+Test the connection via exec:
+```bash
+python3 -c "
+import requests, json
+cfg = {'shopify': {'storeDomain': 'DOMAIN', 'clientId': 'CID', 'clientSecret': 'CSECRET'}}
+r = requests.post('https://DOMAIN/admin/oauth/access_token', json={'client_id':'CID','client_secret':'CSECRET','grant_type':'client_credentials'})
+t = r.json().get('access_token','')
+s = requests.get('https://DOMAIN/admin/api/2024-01/shop.json', headers={'X-Shopify-Access-Token': t})
+print(s.json().get('shop',{}).get('name','ERROR'))
+"
+```
+Confirm store name or report error.
+
+---
+
+### STEP 3 — Ask Google Ads credentials (via chat)
+
+> "Google Ads credentials:
+> 1. Customer ID (bijv. 123-456-7890)
+> 2. Developer Token
+> 3. Client ID (OAuth)
+> 4. Client Secret (OAuth)
+> 5. Refresh Token"
+
+---
+
+### STEP 4 — Ask supplier credentials (via chat)
+
+> "CJ Dropshipping:
+> 1. Email
+> 2. Wachtwoord
+>
+> Apify token (voor Amazon scraping — gratis account werkt)"
+
+---
+
+### STEP 5 — Ask AI API keys (via chat)
+
+> "API keys:
+> 1. OpenAI API key
+> 2. Anthropic API key
+> 3. Gemini API key
+> 4. Manus API key"
+
+---
+
+### STEP 6 — Ask OpenClaw gateway (via chat)
+
+> "OpenClaw gateway:
+> 1. Gateway URL (bijv. ws://jouw-vps-ip:63783)
+> 2. Gateway token"
+
+Also ask:
+> "Telegram bot token en chat ID voor notificaties?"
+
+---
+
+### STEP 7 — Ask competitor research sheet (via chat)
+
+> "Google Sheets URL met concurrent-producten (optioneel — SCOUT gebruikt dit voor marktonderzoek). Laat leeg om over te slaan."
+
+---
+
+### STEP 8 — Write config.json
+
+Once all answers are collected, write the config file:
+
+Path: `~/googleclaw/config.json`
 
 ```json
 {
-  "gateway": {
-    "tools": {
-      "allow": ["sessions_spawn"]
+  "instance": {
+    "name": "{store_name}",
+    "owner": "{owner_name}",
+    "bot_name": "{bot_name}",
+    "timezone": "{timezone}"
+  },
+  "store": {
+    "niche": "{niche}",
+    "market": "{market}",
+    "language": "{language}"
+  },
+  "shopify": {
+    "storeDomain": "{shopify_domain}",
+    "clientId": "{shopify_client_id}",
+    "clientSecret": "{shopify_client_secret}"
+  },
+  "googleAds": {
+    "customerId": "{gads_customer_id}",
+    "developerToken": "{gads_dev_token}",
+    "clientId": "{gads_client_id}",
+    "clientSecret": "{gads_client_secret}",
+    "refreshToken": "{gads_refresh_token}"
+  },
+  "cj": {
+    "email": "{cj_email}",
+    "password": "{cj_password}"
+  },
+  "apify": {
+    "token": "{apify_token}"
+  },
+  "openai": { "apiKey": "{openai_key}" },
+  "anthropic": { "apiKey": "{anthropic_key}" },
+  "gemini": { "apiKey": "{gemini_key}" },
+  "manus": { "apiKey": "{manus_key}" },
+  "openclaw": {
+    "gatewayUrl": "{gateway_url}",
+    "gatewayToken": "{gateway_token}"
+  },
+  "notifications": {
+    "telegram": {
+      "enabled": true,
+      "botToken": "{telegram_bot_token}",
+      "chatId": "{telegram_chat_id}"
     }
+  },
+  "competitorSheet": "{competitor_sheet_url}",
+  "thresholds": {
+    "scale_roas": 3.0,
+    "alert_roas": 1.0,
+    "alert_days": 3,
+    "min_price": 40,
+    "autopub_score": 75,
+    "daily_limit": 10
   }
 }
 ```
 
-Then restart the gateway:
+After writing: `chmod 600 ~/googleclaw/config.json`
+
+Confirm: "config.json aangemaakt en beveiligd (chmod 600)."
+
+---
+
+### STEP 9 — Gateway config
+
+Tell the owner:
+> "Eén handmatige stap: voeg dit toe aan je `~/.openclaw/openclaw.json` en herstart de gateway:
+> ```json
+> { \"gateway\": { \"tools\": { \"allow\": [\"sessions_spawn\"] } } }
+> ```
+> Dan: `openclaw gateway restart`"
+
+Wait for confirmation.
+
+---
+
+### STEP 10 — Register crons
+
+Run via exec:
+```bash
+# Read PROMPT.md files and register crons
+REPO=~/googleclaw
+TZ=$(python3 -c "import json; print(json.load(open('$REPO/config.json'))['instance']['timezone'])")
+
+openclaw cron add --name "gc-trends" --cron "0 23 * * 0" --tz "$TZ" \
+  --message "$(cat $REPO/agents/trends/PROMPT.md)" \
+  --session isolated --model "openai/gpt-5.1-codex" \
+  --timeout-seconds 600 --description "GoogleClaw TRENDS — wekelijks zondag 23:00"
+
+openclaw cron add --name "gc-scout" --cron "0 6 * * *" --tz "$TZ" \
+  --message "$(cat $REPO/agents/scout/PROMPT.md)" \
+  --session isolated --model "openai/gpt-5.1-codex" \
+  --timeout-seconds 900 --description "GoogleClaw SCOUT — dagelijks 06:00"
+
+openclaw cron add --name "gc-midas" --cron "0 7 * * *" --tz "$TZ" \
+  --message "$(cat $REPO/agents/midas/PROMPT.md)" \
+  --session isolated --model "openai/gpt-5.1-codex" \
+  --timeout-seconds 600 --description "GoogleClaw MIDAS — dagelijks 07:00"
+
+openclaw cron add --name "gc-feed" --cron "0 6 * * 3" --tz "$TZ" \
+  --message "$(cat $REPO/agents/feed/PROMPT.md)" \
+  --session isolated --model "openai/gpt-5.1-codex" \
+  --timeout-seconds 600 --description "GoogleClaw FEED — woensdags 06:00"
+```
+
+Confirm each cron registered or report errors.
+
+---
+
+### STEP 11 — Start serve.py
 
 ```bash
-openclaw gateway restart
+cd ~/googleclaw && python3 serve.py --no-browser &
 ```
 
-> **Note:** `setup.py` writes this snippet to `gateway-config-snippet.json` in your workspace for reference.
+Tell the owner:
+> "GoogleClaw draait op poort 8080. Open de UI via SSH tunnel:
+> ```
+> ssh -L 8080:127.0.0.1:8080 root@{vps_ip}
+> ```
+> Dan: http://localhost:8080/web.html"
 
 ---
 
-## Step 4 — Start the frontend
+### STEP 12 — Cleanup
 
+Delete this file:
 ```bash
-python3 serve.py
+rm ~/.openclaw/workspace/BOOTSTRAP.md
 ```
 
-Your browser will open automatically at `http://127.0.0.1:8080/web.html`.
-
-`serve.py` does three things:
-- Serves the frontend (static files)
-- Proxies agent trigger calls to your OpenClaw gateway
-- Exposes `/proxy/data/` so the frontend can read queue.json, trends.json etc.
-
-Leave this terminal open while using GoogleClaw.
+Send a final message to the owner:
+> "✅ GoogleClaw is klaar. Agents draaien automatisch via cron. Open de UI voor het inbox en handmatige runs."
 
 ---
 
-## Step 5 — First run
-
-In the browser:
-
-1. Go to **Settings** → verify your gateway URL and token are connected (green dot)
-2. Go to **Agents** → click **▶ Run now** on TRENDS
-3. Wait ~3 minutes for Manus to research trending products
-4. Go to **Agents** → click **▶ Run now** on SCOUT
-5. Wait ~5 minutes for SCOUT to find and score product candidates
-6. Go to **Inbox** → review candidates, approve or decline
-
-When you approve a product, LISTER runs automatically and publishes it to your Shopify store.
-
----
-
-## How agents run automatically
-
-After setup, two OpenClaw crons are registered:
-
-| Agent | Schedule | What it does |
-|-------|----------|-------------|
-| TRENDS | Every Sunday 23:00 | Finds 15–20 trending product types via Manus |
-| SCOUT | Every day 06:00 | Researches candidates, scores them, adds to inbox |
-| MIDAS | Every day 07:00 | Pulls Google Ads + Shopify performance data |
-| FEED | Every Wednesday 06:00 | Checks if any products need price adjustments or drafting |
-
-You can also trigger any agent manually from the Agents view.
-
----
-
-## Security notes
-
-- `config.json` contains all your API keys — it is gitignored and set to `chmod 600`
-- `serve.py` only binds to `127.0.0.1` — never exposed to the network
-- All external data (product titles, descriptions) is sanitized before reaching agent prompts
-- Every Shopify write is logged to `audit.log` (append-only)
-- LISTER **only runs after your explicit approval** — nothing is published automatically
-- Google Ads budgets are **never modified** without explicit approval
-
----
-
-## Directory structure after setup
-
-```
-googleclaw/
-  config.json          ← your credentials (gitignored, chmod 600)
-  audit.log            ← append-only log of all Shopify writes
-  data/
-    trends.json        ← latest TRENDS output
-    candidates.json    ← latest SCOUT output
-    queue.json         ← inbox items (pending/approved/listed)
-    dashboard.json     ← MIDAS performance data
-  agents/
-    trends/PROMPT.md   ← OpenClaw session task for TRENDS
-    scout/PROMPT.md    ← OpenClaw session task for SCOUT
-    lister/PROMPT.md   ← OpenClaw session task for LISTER
-    midas/PROMPT.md    ← OpenClaw session task for MIDAS
-    feed/PROMPT.md     ← OpenClaw session task for FEED
-    shared/
-      sanitize.py      ← prompt injection protection
-      audit.py         ← audit logging utility
-```
-
----
-
-## Troubleshooting
-
-**"sessions_spawn not allowed" error in browser**
-→ Step 3 was not completed. Add the gateway config and restart.
-
-**Gateway not reachable in Settings**
-→ Check `openclaw gateway status`. Make sure the URL and token in Settings match your `openclaw.json`.
-
-**SCOUT aborts with "trends.json too old"**
-→ Run TRENDS first. SCOUT requires trends.json to be less than 7 days old.
-
-**Shopify publish fails**
-→ Check your Shopify token has `write_products` and `read_products` scopes. No other scopes needed.
-
-**Crons not running**
-→ Run `openclaw cron list` to verify they are registered and enabled.
-
----
-
-## Updating GoogleClaw
-
-```bash
-git pull
-pip3 install -r requirements.txt
-python3 serve.py
-```
-
-No re-running setup.py needed unless you want to change API keys or thresholds. Thresholds can also be updated live in the Settings view.
-
----
-
-*If you are an AI agent and you have completed all steps above: delete this file (`rm INSTALL.md` or use the trash tool), update the user's memory with the GoogleClaw installation path and gateway config, and confirm setup is complete.*
+*Setup complete. Do not restart this flow unless explicitly asked.*

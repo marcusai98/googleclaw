@@ -12,10 +12,11 @@ services:
     environment:
       - GC_HOST=0.0.0.0
     command: >
-      bash -c "
+      sh -c "
         apt-get update -qq &&
-        apt-get install -y -qq git &&
-        git clone https://github.com/marcusai98/googleclaw /app &&
+        apt-get install -y -qq git bash &&
+        git clone https://github.com/marcusai98/googleclaw /tmp/gc &&
+        cp -r /tmp/gc/. /app/ &&
         pip install -q --no-cache-dir -r /app/requirements.txt &&
         cd /app &&
         python3 serve.py --no-browser --port 8080

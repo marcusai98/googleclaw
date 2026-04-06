@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GoogleClaw — Google Ads on autopilot</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#080C09;--card:#111711;--card2:#181F19;
+  --green:#00C96B;--g2:rgba(0,201,107,0.12);--g3:rgba(0,201,107,0.06);
+  --yellow:#FBBC04;--y2:rgba(251,188,4,0.12);
+  --line:rgba(255,255,255,0.07);
+  --t1:#fff;--t2:rgba(255,255,255,0.5);--t3:rgba(255,255,255,0.22);
+}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--t1);line-height:1.6;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+.wrap{max-width:1100px;margin:0 auto;padding:0 24px}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:16px 0;background:rgba(8,12,9,0.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.nav-inner{display:flex;align-items:center;justify-content:space-between}
+.logo{font-size:20px;font-weight:900;letter-spacing:-0.5px}
+.logo span{color:var(--green)}
+.nav-links{display:flex;align-items:center;gap:28px}
+.nav-links a{font-size:13px;font-weight:500;color:var(--t2);transition:color .15s}
+.nav-links a:hover{color:var(--t1)}
+.nav-cta{padding:8px 18px;background:var(--green);color:#080C09;font-size:13px;font-weight:700;border-radius:8px;transition:opacity .15s}
+.nav-cta:hover{opacity:.85}
+
+/* HERO */
+.hero{padding:160px 0 100px;text-align:center}
+.badge{display:inline-flex;align-items:center;gap:8px;padding:6px 14px;background:var(--g2);border:1px solid rgba(0,201,107,0.2);border-radius:100px;font-size:12px;font-weight:600;color:var(--green);margin-bottom:32px}
+.badge::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block}
+.hero h1{font-size:clamp(42px,7vw,80px);font-weight:900;letter-spacing:-2px;line-height:1.05;margin-bottom:20px}
+.hero h1 span{color:var(--green)}
+.hero p{font-size:18px;color:var(--t2);max-width:560px;margin:0 auto 40px}
+.hero-btns{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap}
+.btn-primary{padding:14px 28px;background:var(--green);color:#080C09;font-size:15px;font-weight:700;border-radius:10px;transition:opacity .15s}
+.btn-primary:hover{opacity:.85}
+.btn-outline{padding:14px 28px;background:transparent;color:var(--t1);font-size:15px;font-weight:600;border-radius:10px;border:1px solid var(--line);transition:border-color .15s,color .15s}
+.btn-outline:hover{border-color:rgba(255,255,255,0.3);color:#fff}
+.hero-sub{margin-top:20px;font-size:12px;color:var(--t3)}
+.hero-sub span{color:var(--t2)}
+
+/* METRICS */
+.metrics{padding:24px 0 80px}
+.metrics-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.metric{padding:32px;background:var(--card);text-align:center}
+.metric-val{font-size:42px;font-weight:900;color:var(--green);letter-spacing:-1px}
+.metric-lbl{font-size:13px;color:var(--t2);margin-top:4px}
+
+/* HOW */
+.how{padding:80px 0}
+.section-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--green);margin-bottom:12px}
+.section-title{font-size:clamp(28px,4vw,42px);font-weight:900;letter-spacing:-1px;margin-bottom:16px}
+.section-sub{font-size:16px;color:var(--t2);max-width:500px}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;margin-top:56px;background:var(--line);border-radius:16px;overflow:hidden}
+.step{background:var(--card);padding:36px 28px}
+.step-num{width:36px;height:36px;border-radius:10px;background:var(--g2);border:1px solid rgba(0,201,107,0.2);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:var(--green);margin-bottom:20px}
+.step h3{font-size:18px;font-weight:800;margin-bottom:8px;letter-spacing:-0.3px}
+.step p{font-size:14px;color:var(--t2);line-height:1.6}
+.step-tag{display:inline-flex;align-items:center;gap:6px;margin-top:16px;padding:4px 10px;background:var(--g3);border-radius:6px;font-size:11px;color:var(--green);font-weight:600}
+
+/* AGENTS */
+.agents{padding:80px 0}
+.agents-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:56px}
+.agent-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:28px 24px;transition:border-color .2s,transform .2s}
+.agent-card:hover{border-color:rgba(0,201,107,0.3);transform:translateY(-2px)}
+.agent-icon{font-size:28px;margin-bottom:14px}
+.agent-name{font-size:15px;font-weight:800;margin-bottom:6px;letter-spacing:-0.2px}
+.agent-desc{font-size:13px;color:var(--t2);line-height:1.55;margin-bottom:14px}
+.agent-badge{display:inline-block;padding:3px 9px;background:var(--y2);border-radius:6px;font-size:11px;font-weight:600;color:var(--yellow)}
+
+/* TECH */
+.tech{padding:60px 0}
+.tech-label{font-size:12px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:1.5px;text-align:center;margin-bottom:28px}
+.tech-row{display:flex;align-items:center;justify-content:center;gap:32px;flex-wrap:wrap}
+.tech-item{padding:10px 20px;background:var(--card);border:1px solid var(--line);border-radius:10px;font-size:13px;font-weight:600;color:var(--t2)}
+
+/* DEPLOY */
+.deploy{padding:80px 0}
+.deploy-card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:56px;display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center}
+.deploy-card h2{font-size:clamp(24px,3vw,36px);font-weight:900;letter-spacing:-1px;margin-bottom:12px}
+.deploy-card p{font-size:15px;color:var(--t2);margin-bottom:28px}
+.code-block{background:#0C1210;border:1px solid var(--line);border-radius:12px;padding:24px;font-family:'SF Mono',monospace;font-size:13px;line-height:1.8}
+.code-comment{color:var(--t3)}
+.code-cmd{color:var(--green)}
+.code-url{color:var(--yellow)}
+
+/* FOOTER */
+footer{padding:48px 0;border-top:1px solid var(--line)}
+.footer-inner{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px}
+.footer-links{display:flex;gap:24px}
+.footer-links a{font-size:13px;color:var(--t2);transition:color .15s}
+.footer-links a:hover{color:var(--t1)}
+.footer-copy{font-size:13px;color:var(--t3)}
+
+@media(max-width:768px){
+  .steps{grid-template-columns:1fr}
+  .metrics-grid{grid-template-columns:1fr}
+  .deploy-card{grid-template-columns:1fr;padding:32px}
+  .hero{padding:120px 0 60px}
+  .nav-links{display:none}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="wrap nav-inner">
+    <div class="logo">Google<span>Claw</span></div>
+    <div class="nav-links">
+      <a href="#how">How it works</a>
+      <a href="#agents">Agents</a>
+      <a href="#deploy">Deploy</a>
+      <a href="https://github.com/marcusai98/googleclaw" target="_blank">GitHub</a>
+    </div>
+    <a href="https://github.com/marcusai98/googleclaw" class="nav-cta" target="_blank">Get started →</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="wrap">
+    <div class="badge">Open source · Self-hosted · No monthly AI fees</div>
+    <h1>Your Google Ads store,<br><span>on autopilot.</span></h1>
+    <p>5 AI agents that find winning products, monitor performance, and publish to Shopify — 24/7.</p>
+    <div class="hero-btns">
+      <a href="https://github.com/marcusai98/googleclaw" class="btn-primary" target="_blank">Deploy on your VPS</a>
+      <a href="https://github.com/marcusai98/googleclaw" class="btn-outline" target="_blank">View on GitHub</a>
+    </div>
+    <p class="hero-sub">Works with <span>Shopify</span> · <span>Google Ads</span> · <span>CJ Dropshipping</span></p>
+  </div>
+</section>
+
+<!-- METRICS -->
+<section class="metrics">
+  <div class="wrap">
+    <div class="metrics-grid">
+      <div class="metric">
+        <div class="metric-val">5</div>
+        <div class="metric-lbl">AI agents running 24/7</div>
+      </div>
+      <div class="metric">
+        <div class="metric-val">15 min</div>
+        <div class="metric-lbl">From zero to running</div>
+      </div>
+      <div class="metric">
+        <div class="metric-val">€0</div>
+        <div class="metric-lbl">Platform fees — pay only for AI usage</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="how" id="how">
+  <div class="wrap">
+    <div class="section-label">How it works</div>
+    <h2 class="section-title">Three steps to automation</h2>
+    <p class="section-sub">No DevOps skills needed. Deploy in minutes, agents run forever.</p>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h3>Deploy in 3 clicks</h3>
+        <p>Get a Hostinger VPS, paste the GitHub URL in Docker Manager, click Deploy. That's it.</p>
+        <span class="step-tag">⚡ Hostinger + Docker</span>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h3>Connect your store</h3>
+        <p>Open the setup wizard at your VPS address. 8 steps to connect Shopify, Google Ads, and your API keys.</p>
+        <span class="step-tag">🔗 8-step wizard</span>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h3>Agents run automatically</h3>
+        <p>Crons fire daily and weekly. You get Telegram alerts when action is needed. Approve products in the inbox.</p>
+        <span class="step-tag">📱 Telegram alerts</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- AGENTS -->
+<section class="agents" id="agents">
+  <div class="wrap">
+    <div class="section-label">The agents</div>
+    <h2 class="section-title">Five agents, one mission</h2>
+    <p class="section-sub">Each agent has a specific job. Together they run your store's product pipeline end-to-end.</p>
+    <div class="agents-grid">
+      <div class="agent-card">
+        <div class="agent-icon">📈</div>
+        <div class="agent-name">TRENDS</div>
+        <div class="agent-desc">Spots rising product trends before they peak using Google Trends + market data.</div>
+        <span class="agent-badge">Weekly · Sunday</span>
+      </div>
+      <div class="agent-card">
+        <div class="agent-icon">🔍</div>
+        <div class="agent-name">SCOUT</div>
+        <div class="agent-desc">Finds and scores winning products from CJ Dropshipping, Amazon, and competitor stores.</div>
+        <span class="agent-badge">Daily · 06:00</span>
+      </div>
+      <div class="agent-card">
+        <div class="agent-icon">⚡</div>
+        <div class="agent-name">MIDAS</div>
+        <div class="agent-desc">Monitors your Google Ads ROAS and budget performance. Sends alerts when action is needed.</div>
+        <span class="agent-badge">Daily · 07:00</span>
+      </div>
+      <div class="agent-card">
+        <div class="agent-icon">🚀</div>
+        <div class="agent-name">LISTER</div>
+        <div class="agent-desc">Publishes approved products to your Shopify store with SEO copy, images, and pricing.</div>
+        <span class="agent-badge">On approval</span>
+      </div>
+      <div class="agent-card">
+        <div class="agent-icon">🔄</div>
+        <div class="agent-name">FEED</div>
+        <div class="agent-desc">Optimizes prices and drafts underperforming products based on ROAS and trend data.</div>
+        <span class="agent-badge">Weekly · Wednesday</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TECH STACK -->
+<section class="tech">
+  <div class="wrap">
+    <div class="tech-label">Powered by</div>
+    <div class="tech-row">
+      <div class="tech-item">Google Ads API</div>
+      <div class="tech-item">Shopify Admin API</div>
+      <div class="tech-item">CJ Dropshipping</div>
+      <div class="tech-item">OpenAI GPT</div>
+      <div class="tech-item">OpenClaw</div>
+      <div class="tech-item">Telegram</div>
+      <div class="tech-item">Apify</div>
+    </div>
+  </div>
+</section>
+
+<!-- DEPLOY -->
+<section class="deploy" id="deploy">
+  <div class="wrap">
+    <div class="deploy-card">
+      <div>
+        <div class="section-label">Deploy</div>
+        <h2>Up and running<br>in 15 minutes</h2>
+        <p>One public GitHub repo. One Docker Compose file. One VPS. That's the entire setup.</p>
+        <a href="https://github.com/marcusai98/googleclaw" class="btn-primary" target="_blank">Get started →</a>
+      </div>
+      <div class="code-block">
+        <div class="code-comment"># 1. Hostinger VPS → Docker Manager</div>
+        <div class="code-cmd">URL: github.com/marcusai98/googleclaw</div>
+        <br>
+        <div class="code-comment"># 2. Open firewall port 8080</div>
+        <div class="code-cmd">hPanel → Firewall → Add rule</div>
+        <br>
+        <div class="code-comment"># 3. Open setup wizard</div>
+        <div class="code-url">http://your-vps-ip:8080</div>
+        <br>
+        <div class="code-comment"># Done — agents run automatically</div>
+        <div class="code-cmd">✓ Crons registered · Telegram connected</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="wrap footer-inner">
+    <div class="logo" style="font-size:16px">Google<span style="color:var(--green)">Claw</span></div>
+    <div class="footer-links">
+      <a href="https://github.com/marcusai98/googleclaw" target="_blank">GitHub</a>
+      <a href="https://github.com/marcusai98/googleclaw#readme" target="_blank">Docs</a>
+    </div>
+    <div class="footer-copy">Built for Google Ads dropshippers</div>
+  </div>
+</footer>
+
+</body>
+</html>

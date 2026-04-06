@@ -448,7 +448,7 @@
                 <span class="progress-label active">Store</span>
                 <span class="progress-label">Shopify</span>
                 <span class="progress-label">Ads</span>
-                <span class="progress-label">Supplier</span>
+                <span class="progress-label">Research</span>
                 <span class="progress-label">AI</span>
                 <span class="progress-label">Gateway</span>
                 <span class="progress-label">Notify</span>
@@ -647,20 +647,25 @@
                 </div>
             </div>
 
-            <!-- Step 4: Supplier APIs -->
+            <!-- Step 4: Product Research APIs -->
             <div class="step" data-step="4">
                 <div class="step-header">
-                    <h2>Supplier APIs</h2>
-                    <p>Connect your dropshipping suppliers</p>
+                    <h2>Product Research APIs</h2>
+                    <p>Used by SCOUT to find winning products — not for fulfillment</p>
+                </div>
+
+                <div class="info-box">
+                    These credentials are used by the SCOUT agent to search product catalogs and validate demand. CJ Dropshipping is used for product catalog browsing only — orders and fulfillment are handled manually.
                 </div>
 
                 <div class="form-group">
-                    <label>CJ Dropshipping Email</label>
-                    <input type="text" name="cj_email" placeholder="email@example.com">
+                    <label>CJ Dropshipping — Email</label>
+                    <input type="text" name="cj_email" placeholder="your-cj-account@email.com">
+                    <p class="help-text">CJ API uses email + password for authentication (no separate API key).</p>
                 </div>
 
                 <div class="form-group">
-                    <label>CJ Dropshipping Password</label>
+                    <label>CJ Dropshipping — Password</label>
                     <div class="input-wrapper">
                         <input type="password" name="cj_password" class="password-field">
                         <button type="button" class="toggle-password" onclick="togglePassword(this)">Show</button>
@@ -673,7 +678,7 @@
                         <input type="password" name="apify_token" class="password-field">
                         <button type="button" class="toggle-password" onclick="togglePassword(this)">Show</button>
                     </div>
-                    <p class="help-text">Free account works. Used for Amazon product research.</p>
+                    <p class="help-text">Used to scrape Amazon product data. Free account works. Get token at <a href="https://apify.com" target="_blank" style="color:#FD6737">apify.com</a>.</p>
                 </div>
 
                 <div class="button-group">

@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>GoogleClaw</title>
+<script src="/bootstrap.js" onerror="void(0)"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -1160,7 +1161,26 @@ let gwConfig = null; // live config.json object
 let gwConfigPath = null;
 
 function gwSave() { localStorage.setItem('gc_gw_url', document.getElementById('gw-url').value.trim()); localStorage.setItem('gc_gw_token', document.getElementById('gw-token').value.trim()); }
-function gwLoad() { const u=localStorage.getItem('gc_gw_url')||''; const t=localStorage.getItem('gc_gw_token')||''; if(u) document.getElementById('gw-url').value=u; if(t) document.getElementById('gw-token').value=t; if(u&&t) connectGateway(); }
+function gwLoad() {
+  const b = window.GC_BOOTSTRAP;
+  if(b && b.managed) {
+    // Running via serve.py — auto-connect, hide credential inputs
+    document.getElementById('gw-url').value   = b.gatewayUrl;
+    document.getElementById('gw-token').value = b.gatewayToken || '(managed)';
+    document.getElementById('gw-card').style.display = 'none'; // hide raw inputs
+    populateFromConfig({ instance: b.instance, store: b.store, thresholds: b.thresholds });
+    const st = document.getElementById('gw-status');
+    if(st) { st.textContent = `✓ Connected — ${b.instance.name}`; st.style.color='var(--green)'; }
+    gwConfig = { instance: b.instance, store: b.store, thresholds: b.thresholds };
+    gwConfigPath = '/proxy/config'; // handled by serve.py
+    return;
+  }
+  // Manual mode (file:// or custom server)
+  const u=localStorage.getItem('gc_gw_url')||''; const t=localStorage.getItem('gc_gw_token')||'';
+  if(u) document.getElementById('gw-url').value=u;
+  if(t) document.getElementById('gw-token').value=t;
+  if(u&&t) connectGateway();
+}
 
 async function gwInvoke(tool, params) {
   const url = (document.getElementById('gw-url').value.trim()).replace(/\/$/, '');
@@ -1215,7 +1235,7 @@ function populateFromConfig(cfg) {
 
 async function saveThresholdsToConfig(section) {
   const btn = document.getElementById('save-'+section);
-  if(!gwConfig || !gwConfigPath) {
+  if(!gwConfig) {
     if(btn) { btn.textContent='⚠ Connect gateway first'; setTimeout(()=>{ btn.textContent='Save changes'; },2000); }
     return;
   }
@@ -1224,7 +1244,15 @@ async function saveThresholdsToConfig(section) {
   if(section==='midas') { t.scale_roas=thresholds.scale; t.alert_roas=thresholds.alert; t.alert_days=thresholds.days; }
   if(section==='scout') { t.min_price=thresholds.minprice; t.autopub_score=thresholds.autopub; t.daily_limit=thresholds.products; }
   try {
-    await gwInvoke('write', { path: gwConfigPath, content: JSON.stringify(gwConfig, null, 2) });
+    // serve.py mode: POST to /proxy/config directly (faster, no gateway round-trip)
+    // manual mode: use gateway write tool
+    const isManaged = window.GC_BOOTSTRAP && window.GC_BOOTSTRAP.managed;
+    if(isManaged) {
+      const res = await fetch('/proxy/config', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({thresholds: t}) });
+      if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    } else {
+      await gwInvoke('write', { path: gwConfigPath, content: JSON.stringify(gwConfig, null, 2) });
+    }
     if(btn) { btn.textContent='Saved ✓'; btn.style.background='var(--green)'; setTimeout(()=>{ btn.textContent='Save changes'; btn.style.background='var(--acc)'; },2000); }
   } catch(e) {
     if(btn) { btn.textContent=`✗ ${e.message}`; setTimeout(()=>{ btn.textContent='Save changes'; },3000); }

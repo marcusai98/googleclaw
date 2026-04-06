@@ -537,7 +537,12 @@
                 <div class="info-box">
                     <strong>Two options depending on when your app was created:</strong><br><br>
                     <strong>Option A — Existing custom app (before Jan 2026):</strong> You have a static access token. Go to your Shopify Admin → Settings → Apps → your custom app → API credentials → copy the access token. Paste it in the "Static Token" field below.<br><br>
-                    <strong>Option B — New app (Jan 2026+):</strong> Static tokens are no longer available. Create a free account at <a href="https://partners.shopify.com" target="_blank" style="color:#FD6737">partners.shopify.com</a> → Apps → Create app → select your store → Settings → copy Client ID and Client Secret. Required scopes: <code>write_products</code> + <code>read_products</code>.
+                    <strong>Option B — New app (Jan 2026+):</strong> Static tokens are no longer available. Steps:<br>
+                    1. Create free account at <a href="https://partners.shopify.com" target="_blank" style="color:#FD6737">partners.shopify.com</a><br>
+                    2. Apps → Create app → give it a name<br>
+                    3. Configuration → API scopes: enable <code>write_products</code> + <code>read_products</code> → Save<br>
+                    4. <strong>Install app on your store</strong> (required — token won't work without this)<br>
+                    5. Settings → copy <strong>Client ID</strong> and <strong>Client secret</strong>
                 </div>
 
                 <div class="form-group">

@@ -624,10 +624,10 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:'Inter',s
           <button onclick="alert('Manage Google Ads')" style="padding:6px 12px;border-radius:8px;background:transparent;border:1px solid var(--line);color:var(--t2);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">Manage</button>
         </div>
         <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line2)">
-          <div style="width:36px;height:36px;border-radius:10px;background:rgba(255,100,0,0.12);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🧡</div>
-          <div style="flex:1"><div style="font-size:13px;font-weight:700">AliExpress</div><div style="font-size:11px;color:var(--t2);margin-top:1px">Product sourcing via API</div></div>
+          <div style="width:36px;height:36px;border-radius:10px;background:rgba(255,100,0,0.12);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">📦</div>
+          <div style="flex:1"><div style="font-size:13px;font-weight:700">CJ Dropshipping</div><div style="font-size:11px;color:var(--t2);margin-top:1px">Product sourcing via API</div></div>
           <span class="tag tag-g">Connected</span>
-          <button onclick="alert('Manage AliExpress')" style="padding:6px 12px;border-radius:8px;background:transparent;border:1px solid var(--line);color:var(--t2);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">Manage</button>
+          <button onclick="alert('Manage CJ Dropshipping')" style="padding:6px 12px;border-radius:8px;background:transparent;border:1px solid var(--line);color:var(--t2);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">Manage</button>
         </div>
         <div style="display:flex;align-items:center;gap:12px;padding:14px 16px">
           <div style="width:36px;height:36px;border-radius:10px;background:var(--b2);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">✈️</div>
@@ -637,11 +637,11 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:'Inter',s
         </div>
       </div>
 
-      <!-- HERALD thresholds -->
-      <div class="sec" style="margin-bottom:8px"><div class="sec-t">HERALD — Performance thresholds</div></div>
-      <div class="card" style="margin-bottom:20px">
+      <!-- MIDAS thresholds -->
+      <div class="sec" style="margin-bottom:8px"><div class="sec-t">MIDAS — Performance thresholds</div></div>
+      <div class="card" style="margin-bottom:4px">
         <div style="padding:14px 16px;border-bottom:1px solid var(--line2)">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <div style="display:flex;align-items:center;justify-content:space-between">
             <div><div style="font-size:13px;font-weight:700">Scale trigger (ROAS ≥)</div><div style="font-size:11px;color:var(--t2);margin-top:2px">Propose budget increase above this ROAS</div></div>
             <div style="display:flex;align-items:center;gap:8px">
               <button onclick="adjThresh('scale',-0.1)" style="width:28px;height:28px;border-radius:7px;background:var(--card2);border:1px solid var(--line);color:var(--t1);font-size:16px;cursor:pointer;font-family:inherit">−</button>
@@ -651,8 +651,8 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:'Inter',s
           </div>
         </div>
         <div style="padding:14px 16px;border-bottom:1px solid var(--line2)">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-            <div><div style="font-size:13px;font-weight:700">Alert trigger (ROAS ≤)</div><div style="font-size:11px;color:var(--t2);margin-top:2px">Flag listing as underperforming below this</div></div>
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div><div style="font-size:13px;font-weight:700">Alert trigger (ROAS ≤)</div><div style="font-size:11px;color:var(--t2);margin-top:2px">Flag as underperforming below this ROAS</div></div>
             <div style="display:flex;align-items:center;gap:8px">
               <button onclick="adjThresh('alert',-0.1)" style="width:28px;height:28px;border-radius:7px;background:var(--card2);border:1px solid var(--line);color:var(--t1);font-size:16px;cursor:pointer;font-family:inherit">−</button>
               <div id="thresh-alert" style="font-size:16px;font-weight:900;min-width:48px;text-align:center;color:var(--red)">1.0x</div>
@@ -671,13 +671,26 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:'Inter',s
           </div>
         </div>
       </div>
+      <div style="display:flex;justify-content:flex-end;margin-bottom:20px;padding-top:8px">
+        <button onclick="saveThresholds('midas')" id="save-midas" style="padding:8px 18px;border-radius:9px;background:var(--acc);border:none;color:#000;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Save changes</button>
+      </div>
 
       <!-- SCOUT settings -->
-      <div class="sec" style="margin-bottom:8px"><div class="sec-t">SCOUT — Product research</div></div>
-      <div class="card" style="margin-bottom:20px">
+      <div class="sec" style="margin-bottom:8px"><div class="sec-t">SCOUT — Product discovery</div></div>
+      <div class="card" style="margin-bottom:4px">
         <div style="padding:14px 16px;border-bottom:1px solid var(--line2)">
           <div style="display:flex;align-items:center;justify-content:space-between">
-            <div><div style="font-size:13px;font-weight:700">Auto-publish threshold</div><div style="font-size:11px;color:var(--t2);margin-top:2px">Publish automatically at or above this score</div></div>
+            <div><div style="font-size:13px;font-weight:700">Minimum selling price</div><div style="font-size:11px;color:var(--t2);margin-top:2px">Products below this price are hard-filtered out</div></div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <button onclick="adjThresh('minprice',-5)" style="width:28px;height:28px;border-radius:7px;background:var(--card2);border:1px solid var(--line);color:var(--t1);font-size:16px;cursor:pointer;font-family:inherit">−</button>
+              <div id="thresh-minprice" style="font-size:16px;font-weight:900;min-width:48px;text-align:center">€40</div>
+              <button onclick="adjThresh('minprice',5)" style="width:28px;height:28px;border-radius:7px;background:var(--card2);border:1px solid var(--line);color:var(--t1);font-size:16px;cursor:pointer;font-family:inherit">+</button>
+            </div>
+          </div>
+        </div>
+        <div style="padding:14px 16px;border-bottom:1px solid var(--line2)">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div><div style="font-size:13px;font-weight:700">Auto-publish score</div><div style="font-size:11px;color:var(--t2);margin-top:2px">Publish automatically at or above this score</div></div>
             <div style="display:flex;align-items:center;gap:8px">
               <button onclick="adjThresh('autopub',-5)" style="width:28px;height:28px;border-radius:7px;background:var(--card2);border:1px solid var(--line);color:var(--t1);font-size:16px;cursor:pointer;font-family:inherit">−</button>
               <div id="thresh-autopub" style="font-size:16px;font-weight:900;min-width:48px;text-align:center;color:var(--yellow)">75</div>
@@ -701,6 +714,9 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:'Inter',s
             </div>
           </div>
         </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-bottom:20px;padding-top:8px">
+        <button onclick="saveThresholds('scout')" id="save-scout" style="padding:8px 18px;border-radius:9px;background:var(--acc);border:none;color:#000;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Save changes</button>
       </div>
 
       <!-- Notifications -->
@@ -1123,13 +1139,29 @@ document.addEventListener('click', e => {
 });
 
 // ===== SETTINGS =====
-const thresholds = { scale:3.0, alert:1.0, days:3, autopub:75, products:10 };
+const thresholds = { scale:3.0, alert:1.0, days:3, autopub:75, products:10, minprice:40 };
+const threshFmt = {
+  scale:    v => v.toFixed(1)+'x',
+  alert:    v => v.toFixed(1)+'x',
+  days:     v => v+'d',
+  autopub:  v => v,
+  products: v => v,
+  minprice: v => '€'+v
+};
 function adjThresh(key, delta) {
-  thresholds[key] = Math.round((thresholds[key]+delta)*10)/10;
+  const min = {scale:1.0, alert:0.5, days:1, autopub:50, products:5, minprice:10};
+  thresholds[key] = Math.max(min[key]||0, Math.round((thresholds[key]+delta)*10)/10);
   const el = document.getElementById('thresh-'+key);
-  if(!el) return;
-  const fmt = {scale:v=>v.toFixed(1)+'x', alert:v=>v.toFixed(1)+'x', days:v=>v+'d', autopub:v=>v, products:v=>v};
-  el.textContent = fmt[key](thresholds[key]);
+  if(el) el.textContent = threshFmt[key](thresholds[key]);
+  // Mark section as unsaved
+  const btn = document.getElementById('save-' + ({'scale':'midas','alert':'midas','days':'midas','autopub':'scout','products':'scout','minprice':'scout'}[key]));
+  if(btn) { btn.textContent = 'Save changes ●'; btn.style.opacity='1'; }
+}
+function saveThresholds(section) {
+  const btn = document.getElementById('save-'+section);
+  if(btn) { btn.textContent = 'Saved ✓'; btn.style.background='var(--green)'; setTimeout(()=>{ btn.textContent='Save changes'; btn.style.background='var(--acc)'; },2000); }
+  // In production: POST thresholds to gateway → config.json update
+  console.log('Thresholds saved:', thresholds);
 }
 function toggleSetting(id) {
   const el = document.getElementById('tog-'+id);

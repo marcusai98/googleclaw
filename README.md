@@ -39,6 +39,14 @@ Complete this before running `setup.py`. All keys are entered during onboarding 
 | 8 | **Shopify Admin API** | LISTER, FEED | Shopify Admin → Apps → Develop apps → Create app | Free per store |
 | 9 | **CJ Dropshipping API** | SCOUT | [cjdropshipping.com](https://cjdropshipping.com) → Developers → API access | Free, verification needed for higher limits |
 | 10 | **Apify** | SCOUT | [apify.com](https://apify.com) → Sign up → API token | $5 free credit/month |
+| 11 | **Google Sheets (sharelink)** | SCOUT | No API key needed — share your competitor research sheet as "Anyone with link can view" | Free |
+
+### Planned (V2)
+
+| # | Service | Planned use |
+|---|---------|-------------|
+| — | **Tavily Web Search** | Real-time web search for TRENDS + SCOUT competitor research |
+| — | **here.now** | Auto-publish MIDAS performance reports + FEED optimization reports as URLs |
 
 ### Infrastructure
 
@@ -54,7 +62,7 @@ Complete this before running `setup.py`. All keys are entered during onboarding 
 - **Google Trends (pytrends)** — unofficial library, no API key needed. Install: `pip install pytrends`. Rate-limited by Google; TRENDS processes in batches of 5 keywords.
 - **Google Keyword Planner** — uses the same OAuth credentials as Google Ads API. Requires an active Google Ads account (any spend level).
 - **CJ Dropshipping** — free account gives 1 req/sec, 1,000 calls/day. Verification (submit business docs) increases limits. SCOUT only uses CJ for product discovery — not orders or fulfillment.
-- **Competitor Shopify stores** — public HTTP requests, no API key needed. URLs are configured during setup.
+- **Google Sheets (competitor research)** — you maintain your own competitor research sheet. Share it as "Anyone with the link can view". SCOUT fetches it as CSV via: `https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv`. No API key or OAuth required.
 - **config.json** — always gitignored. Never commit it. Contains all API keys and store credentials.
 
 ---

@@ -532,35 +532,39 @@ def main():
 
     config["apify"] = {"token": apify_token}
 
-    # ── 6. Competitor stores ───────────────────────────────────────────────
-    section("6/9 — Competitor stores")
+    # ── 6. Competitor research (Google Sheets) ────────────────────────────
+    section("6/9 — Competitor research")
 
-    print(f"  {c.DIM}SCOUT scrapet concurrent-Shopify stores via /products.json (publiek endpoint).{c.RESET}")
-    print(f"  {c.DIM}Voeg minimaal 2-3 directe concurrenten in jouw niche toe.{c.RESET}")
-    print(f"  {c.DIM}Iedere Shopify store is geldig — bijv. https://competitor.myshopify.com{c.RESET}")
+    print(f"  {c.DIM}SCOUT leest jouw competitor-onderzoek uit een Google Sheets spreadsheet.{c.RESET}")
+    print(f"  {c.DIM}Deel het sheet via: Delen → Iedereen met de link → Viewer.{c.RESET}")
+    print(f"  {c.DIM}Verwacht formaat: kolommen Product, URL, Prijs, Niche (headers in rij 1).{c.RESET}")
+    print(f"  {c.DIM}Geen sheet? Laat leeg — SCOUT slaat deze bron over.{c.RESET}")
     print()
 
-    competitor_urls = []
-    print(f"  {c.CYAN}Voeg competitor URLs toe (één per keer). Lege Enter = klaar.{c.RESET}")
-    print()
-    while True:
-        url = ask(f"  Competitor URL {len(competitor_urls) + 1}", default="" if competitor_urls else None)
-        if not url:
-            if not competitor_urls:
-                warn("Geen competitor URLs — SCOUT slaat deze bron over. Voeg later handmatig toe in config.json.")
-            break
-        # Normalize
-        if not url.startswith("http"):
-            url = "https://" + url
-        competitor_urls.append(url)
-        ok(f"Toegevoegd: {url}")
+    sheets_url = ask("Google Sheets sharelink (view-only)", default="")
+    sheets_csv_url = ""
 
-    if competitor_urls:
-        ok(f"{len(competitor_urls)} competitor store(s) geconfigureerd")
+    if sheets_url:
+        # Extract sheet ID and build CSV export URL
+        import re as _re
+        match = _re.search(r"/spreadsheets/d/([a-zA-Z0-9_-]+)", sheets_url)
+        if match:
+            sheet_id = match.group(1)
+            sheets_csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid=0"
+            ok(f"Sheet ID: {sheet_id}")
+            ok(f"CSV export URL: {sheets_csv_url}")
+        else:
+            warn("Kon Sheet ID niet herkennen — URL handmatig controleren in config.json.")
+            sheets_csv_url = sheets_url
+    else:
+        dim("Geen competitor sheet — SCOUT gebruikt alleen CJ en Amazon als bronnen.")
 
     config["scout"] = {
         "minSellingPrice": 40,
-        "competitors": {"urls": competitor_urls}
+        "competitors": {
+            "sheetsUrl":    sheets_url,
+            "sheetsCsvUrl": sheets_csv_url
+        }
     }
 
     # ── 7. AI providers ────────────────────────────────────────────────────

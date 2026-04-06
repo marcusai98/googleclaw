@@ -1,138 +1,140 @@
 #!/usr/bin/env python3
 """
-SCOUT — Method 3: Competitor store scraping
-Reads products from competitor Shopify stores via /products.json (public endpoint).
-Returns: product title, price, handle, image.
-All Shopify stores expose /products.json — no scraping/auth needed.
+SCOUT — Method 3: Competitor research via Google Sheets
+Reads a user-maintained competitor product sheet (view-only sharelink).
+No scraping, no API key needed — just a public CSV export URL.
+
+Expected sheet columns (row 1 = headers, case-insensitive):
+  Product / Title  — product name or type
+  URL              — product or store URL (optional)
+  Price            — selling price (numeric, optional)
+  Niche / Category — product category (optional)
+  Notes            — any extra context (optional)
+
+Share the sheet: Google Sheets → Share → Anyone with the link → Viewer.
+CSV export URL: https://docs.google.com/spreadsheets/d/{ID}/export?format=csv
 """
 
+import csv
+import io
 import requests
 import time
-from urllib.parse import urlparse
 
 
-def fetch_shopify_products(store_url: str, limit: int = 50) -> list:
-    """
-    Fetch products from a Shopify store's public /products.json endpoint.
-    Works on any Shopify store regardless of theme or privacy settings.
-    """
-    # Normalize URL
-    parsed = urlparse(store_url)
-    base   = f"{parsed.scheme or 'https'}://{parsed.netloc or parsed.path.strip('/')}"
-    url    = f"{base}/products.json"
-
+def fetch_sheet_csv(csv_url: str) -> list:
+    """Download Google Sheets as CSV and return list of dicts."""
     try:
-        r = requests.get(url, params={"limit": limit}, timeout=15, headers={
-            "User-Agent": "Mozilla/5.0 (compatible; product-research-bot/1.0)"
+        r = requests.get(csv_url, timeout=20, headers={
+            "User-Agent": "GoogleClaw-SCOUT/1.0"
         })
-        if r.status_code == 200:
-            return r.json().get("products", [])
-        print(f"[SCOUT/Competitors] {store_url} returned {r.status_code}")
-        return []
+        if r.status_code != 200:
+            print(f"[SCOUT/Competitors] Sheet returned HTTP {r.status_code}")
+            return []
+        reader = csv.DictReader(io.StringIO(r.text))
+        rows = list(reader)
+        print(f"[SCOUT/Competitors] Loaded {len(rows)} rows from competitor sheet")
+        return rows
     except Exception as e:
-        print(f"[SCOUT/Competitors] Failed to fetch {store_url}: {e}")
+        print(f"[SCOUT/Competitors] Failed to fetch sheet: {e}")
         return []
 
 
-def parse_product(raw: dict, store_url: str, trend: dict) -> dict:
-    """Normalize a Shopify product to SCOUT candidate format."""
-    title    = raw.get("title", "")
-    handle   = raw.get("handle", "")
-    variants = raw.get("variants", [])
-    prices   = [float(v.get("price", 0)) for v in variants if v.get("price")]
-    min_price = min(prices) if prices else 0.0
-    max_price = max(prices) if prices else 0.0
-
-    image = ""
-    images = raw.get("images", [])
-    if images:
-        image = images[0].get("src", "")
-
-    return {
-        "title":          title,
-        "source":         "competitor",
-        "competitorUrl":  f"{store_url.rstrip('/')}/products/{handle}",
-        "competitorStore": store_url,
-        "competitorPrice": round(min_price, 2),
-        "competitorPriceMax": round(max_price, 2),
-        "imageUrl":       image,
-        "matchedTrend":   trend["name"],
-        "trendVolume":    trend.get("monthlyVolume", 0),
-        "trendScore":     trend.get("score", 0),
-    }
+def normalize_headers(row: dict) -> dict:
+    """Normalize column names to lowercase, strip whitespace."""
+    return {k.strip().lower(): v.strip() for k, v in row.items() if k}
 
 
-def match_trend(title: str, description: str, trend: dict) -> bool:
-    """Check if a competitor product matches a trend keyword."""
-    keywords  = trend.get("keywords", [trend.get("name", "").lower()])
-    title_l   = title.lower()
-    desc_l    = (description or "").lower()
+def parse_price(val: str) -> float:
+    """Extract numeric price from a string like '€89', '89.99', etc."""
+    if not val:
+        return 0.0
+    cleaned = val.replace("€", "").replace("$", "").replace(",", ".").strip()
+    try:
+        return float(cleaned)
+    except ValueError:
+        return 0.0
+
+
+def match_trend(row: dict, trend: dict) -> bool:
+    """Check if a competitor product row matches a trend keyword."""
+    keywords = trend.get("keywords", [trend.get("name", "").lower()])
+    haystack = " ".join([
+        row.get("product", ""),
+        row.get("title", ""),
+        row.get("niche", ""),
+        row.get("category", ""),
+        row.get("notes", ""),
+    ]).lower()
 
     for kw in keywords:
         kw_l = kw.lower()
-        if kw_l in title_l or kw_l in desc_l:
+        if kw_l in haystack:
             return True
-        # Partial word match (e.g. "zonnebril" matches "zonnebrillen")
-        if len(kw_l) > 5 and (kw_l[:6] in title_l or kw_l[:6] in desc_l):
+        if len(kw_l) > 5 and kw_l[:6] in haystack:
             return True
     return False
 
 
+def parse_row(row: dict, trend: dict) -> dict:
+    """Convert a sheet row to SCOUT candidate format."""
+    name  = row.get("product") or row.get("title") or ""
+    url   = row.get("url", "")
+    price = parse_price(row.get("price", ""))
+
+    return {
+        "title":           name,
+        "source":          "competitor_sheet",
+        "competitorUrl":   url,
+        "competitorStore": "Google Sheets",
+        "competitorPrice": price,
+        "competitorPriceMax": price,
+        "imageUrl":        "",
+        "matchedTrend":    trend["name"],
+        "trendVolume":     trend.get("monthlyVolume", 0),
+        "trendScore":      trend.get("score", 0),
+    }
+
+
 def fetch(trends: list, cfg: dict, limit_per_trend: int = 5) -> list:
     """
-    Fetch products from all configured competitor stores.
-    Filter to only products matching a trend keyword.
+    Fetch competitor products from user-provided Google Sheets.
+    Filters rows to only those matching an active trend.
     """
-    competitor_urls = cfg.get("scout", {}).get("competitors", {}).get("urls", [])
-    min_price       = cfg.get("scout", {}).get("minSellingPrice", 40)
+    competitor_cfg = cfg.get("scout", {}).get("competitors", {})
+    csv_url        = competitor_cfg.get("sheetsCsvUrl", "")
+    min_price      = cfg.get("scout", {}).get("minSellingPrice", 40)
 
-    if not competitor_urls:
-        print("[SCOUT/Competitors] No competitor URLs in config — skipping")
+    if not csv_url:
+        print("[SCOUT/Competitors] No Google Sheets URL in config — skipping")
         return []
 
-    # Fetch all competitor products once (avoid re-fetching per trend)
-    all_competitor_products = []
-    for store_url in competitor_urls:
-        print(f"[SCOUT/Competitors] Fetching {store_url}...")
-        products = fetch_shopify_products(store_url, limit=100)
-        for p in products:
-            all_competitor_products.append((store_url, p))
-        time.sleep(1.0)
+    raw_rows = fetch_sheet_csv(csv_url)
+    if not raw_rows:
+        return []
 
-    print(f"[SCOUT/Competitors] Total products across all stores: {len(all_competitor_products)}")
-
-    # Match against trends
-    candidates = []
+    rows = [normalize_headers(r) for r in raw_rows]
+    candidates  = []
     seen_titles = set()
 
     for trend in trends:
         matched = 0
-        for store_url, raw in all_competitor_products:
-            title = raw.get("title", "")
-            desc  = raw.get("body_html", "")
-
-            if not match_trend(title, desc, trend):
+        for row in rows:
+            if not match_trend(row, trend):
                 continue
 
-            # Hard filter: price too low
-            variants = raw.get("variants", [])
-            prices   = [float(v.get("price", 0)) for v in variants if v.get("price")]
-            max_p    = max(prices) if prices else 0
-            if max_p > 0 and max_p < min_price:
-                continue
+            price = parse_price(row.get("price", ""))
+            if price > 0 and price < min_price:
+                continue  # Hard filter: below minimum selling price
 
-            # Dedup across trends
-            key = title.lower()[:40]
+            key = (row.get("product") or row.get("title") or "").lower()[:40]
             if key in seen_titles:
-                # Still record which trend it matched, for multi-source merge
                 continue
             seen_titles.add(key)
 
-            p = parse_product(raw, store_url, trend)
-            candidates.append(p)
+            candidates.append(parse_row(row, trend))
             matched += 1
-            if matched >= limit_per_trend * 3:
+            if matched >= limit_per_trend:
                 break
 
-    print(f"[SCOUT/Competitors] Found {len(candidates)} trend-matching candidates")
+    print(f"[SCOUT/Competitors] {len(candidates)} trend-matching rows from sheet")
     return candidates

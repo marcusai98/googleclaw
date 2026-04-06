@@ -13,31 +13,18 @@ can add size/color variants manually in Shopify if needed.
 """
 
 import requests
+import sys
+import os
 import base64
 from io import BytesIO
 
-
-def get_shopify_token(cfg: dict) -> str:
-    """Get or refresh Shopify access token."""
-    shopify_cfg = cfg.get("shopify", {})
-    token       = shopify_cfg.get("accessToken", "")
-    if token:
-        return token
-
-    # OAuth client credentials flow (auto-refresh)
-    domain        = shopify_cfg.get("storeDomain", "")
-    client_id     = shopify_cfg.get("clientId", "")
-    client_secret = shopify_cfg.get("clientSecret", "")
-    if client_id and client_secret:
-        r = requests.post(
-            f"https://{domain}/admin/oauth/access_token",
-            json={"client_id": client_id, "client_secret": client_secret,
-                  "grant_type": "client_credentials"},
-            timeout=15
-        )
-        r.raise_for_status()
-        return r.json().get("access_token", "")
-    return ""
+# Use shared Shopify auth (handles OAuth + caching)
+try:
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "shared"))
+    from shopify_auth import get_shopify_token
+except ImportError:
+    def get_shopify_token(cfg):
+        return cfg.get("shopify", {}).get("accessToken", "")
 
 
 def build_variants(candidate: dict, price: float, compare_at: float | None) -> list:

@@ -12,7 +12,9 @@
 
   "shopify": {
     "storeDomain": "your-store.myshopify.com",
-    "accessToken": "YOUR_SHOPIFY_ADMIN_TOKEN"
+    "clientId": "YOUR_SHOPIFY_APP_CLIENT_ID",
+    "clientSecret": "YOUR_SHOPIFY_APP_CLIENT_SECRET",
+    "_note": "Create a Custom App in Shopify Dev Dashboard. Scopes: write_products + read_products only. Token is auto-refreshed every 24h."
   },
 
   "googleAds": {

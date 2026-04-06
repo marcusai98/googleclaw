@@ -19,9 +19,19 @@ Usage:
 import json
 import argparse
 import datetime
+import sys
+import os
 from pathlib import Path
 
 from steps import performance, trend_check, actions
+
+# Shared Shopify auth
+try:
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "shared"))
+    from shopify_auth import get_shopify_token
+except ImportError:
+    def get_shopify_token(cfg):
+        return cfg.get("shopify", {}).get("accessToken", "")
 
 
 def load_json(path: str, default):
@@ -88,7 +98,7 @@ def main():
 
     shopify_cfg  = cfg.get("shopify", {})
     domain       = shopify_cfg.get("storeDomain", "")
-    token        = shopify_cfg.get("accessToken", "")
+    token        = get_shopify_token(cfg)
 
     print(f"[FEED] Starting weekly optimization run — {datetime.date.today()}")
 

@@ -123,8 +123,25 @@ def test_apify(token):
         return False, str(e)
 
 
-def test_shopify(domain, token):
+def get_shopify_oauth_token(domain, client_id, client_secret):
+    """Exchange client credentials for a 24h Shopify access token."""
+    import json as _json
+    url     = f"https://{domain}/admin/oauth/access_token"
+    payload = json.dumps({
+        "client_id":     client_id,
+        "client_secret": client_secret,
+        "grant_type":    "client_credentials"
+    }).encode()
+    req = urllib.request.Request(url, data=payload,
+                                  headers={"Content-Type": "application/json"}, method="POST")
+    with urllib.request.urlopen(req, timeout=10) as r:
+        return _json.loads(r.read()).get("access_token", "")
+
+def test_shopify(domain, client_id, client_secret):
     try:
+        token = get_shopify_oauth_token(domain, client_id, client_secret)
+        if not token:
+            return False, "Geen token ontvangen — controleer Client ID en Secret"
         url = f"https://{domain}/admin/api/2024-01/shop.json"
         req = urllib.request.Request(url, headers={"X-Shopify-Access-Token": token})
         with urllib.request.urlopen(req, timeout=8) as r:
@@ -132,7 +149,7 @@ def test_shopify(domain, token):
             name = data.get("shop", {}).get("name", "onbekend")
             return True, name
     except urllib.error.HTTPError as e:
-        return False, f"HTTP {e.code}"
+        return False, f"HTTP {e.code} — controleer Client ID, Secret en store domein"
     except Exception as e:
         return False, str(e)
 
@@ -461,11 +478,17 @@ def main():
     # ── 2. Shopify ─────────────────────────────────────────────────────────
     section("2/7 — Shopify")
 
-    shopify_domain = ask("Shopify store domein (bijv. mijn-store.myshopify.com)")
-    shopify_token  = ask("Shopify Admin API access token", secret=True)
+    print(f"  {c.DIM}Shopify gebruikt OAuth Client Credentials (sinds jan 2026).{c.RESET}")
+    print(f"  {c.DIM}Ga naar: Shopify Admin → Settings → Apps → Develop apps → Create app{c.RESET}")
+    print(f"  {c.DIM}Scopes: write_products + read_products (niets anders nodig){c.RESET}")
+    print()
 
-    info("Verbinding testen...")
-    success, detail = test_shopify(shopify_domain, shopify_token)
+    shopify_domain  = ask("Shopify store domein (bijv. mijn-store.myshopify.com)")
+    shopify_cid     = ask("Shopify App Client ID")
+    shopify_csecret = ask("Shopify App Client Secret", secret=True)
+
+    info("Verbinding testen (OAuth token ophalen)...")
+    success, detail = test_shopify(shopify_domain, shopify_cid, shopify_csecret)
     if success:
         ok(f"Shopify verbonden — store: {c.BOLD}{detail}{c.RESET}")
     else:
@@ -474,8 +497,9 @@ def main():
             sys.exit(1)
 
     config["shopify"] = {
-        "storeDomain": shopify_domain,
-        "accessToken": shopify_token
+        "storeDomain":  shopify_domain,
+        "clientId":     shopify_cid,
+        "clientSecret": shopify_csecret,
     }
 
     # ── 3. Google Ads ──────────────────────────────────────────────────────

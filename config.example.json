@@ -105,5 +105,14 @@
       "botToken": "YOUR_BOT_TOKEN",
       "chatId": "YOUR_CHAT_ID"
     }
+  },
+  "modelRouting": {
+    "default": "openai/gpt-5.1-codex",
+    "trends":  "openai/gpt-5.1-codex",
+    "scout":   "openai/gpt-5.1-codex",
+    "lister":  "openai/gpt-5.1-codex",
+    "midas":   "openai/gpt-5.1-codex",
+    "feed":    "openai/gpt-5.1-codex",
+    "_note":   "Use openai/gpt-5.1-codex for all agents. Claude (anthropic/*) only if explicitly needed for copy/reasoning tasks."
   }
 }

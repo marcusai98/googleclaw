@@ -9,17 +9,12 @@
     "market": "Netherlands",
     "language": "Dutch"
   },
-  "manus": {
-    "apiKey": "YOUR_MANUS_API_KEY"
-  },
-  "openclaw": {
-    "gatewayUrl": "http://YOUR_VPS_IP:63783",
-    "gatewayToken": "YOUR_GATEWAY_TOKEN"
-  },
+
   "shopify": {
     "storeDomain": "your-store.myshopify.com",
     "accessToken": "YOUR_SHOPIFY_ADMIN_TOKEN"
   },
+
   "googleAds": {
     "customerId": "YOUR_CUSTOMER_ID",
     "developerToken": "YOUR_DEVELOPER_TOKEN",
@@ -27,6 +22,29 @@
     "clientSecret": "YOUR_CLIENT_SECRET",
     "refreshToken": "YOUR_REFRESH_TOKEN"
   },
+
+  "cj": {
+    "_comment": "CJ Dropshipping account credentials — used by SCOUT and LISTER",
+    "email": "YOUR_CJ_EMAIL",
+    "password": "YOUR_CJ_PASSWORD"
+  },
+
+  "apify": {
+    "_comment": "Apify token — used by SCOUT for Amazon product research (no Amazon account needed). Get your token at https://apify.com",
+    "token": "YOUR_APIFY_TOKEN"
+  },
+
+  "scout": {
+    "minSellingPrice": 40,
+    "competitors": {
+      "_comment": "Shopify competitor store URLs. All Shopify stores expose /products.json — no login needed.",
+      "urls": [
+        "https://competitor1.myshopify.com",
+        "https://competitor2.com"
+      ]
+    }
+  },
+
   "openai": {
     "apiKey": "YOUR_OPENAI_API_KEY"
   },
@@ -36,6 +54,15 @@
   "gemini": {
     "apiKey": "YOUR_GEMINI_API_KEY"
   },
+  "manus": {
+    "apiKey": "YOUR_MANUS_API_KEY"
+  },
+
+  "openclaw": {
+    "gatewayUrl": "ws://YOUR_VPS_IP:63783",
+    "gatewayToken": "YOUR_GATEWAY_TOKEN"
+  },
+
   "thresholds": {
     "scaleTriggerRoas": 3.0,
     "alertTriggerRoas": 1.0,
@@ -44,6 +71,7 @@
     "scoutInboxMinScore": 60,
     "scoutDailyLimit": 10
   },
+
   "costs": {
     "shopifyMonthly": 39,
     "shopifyPaymentsFeePercent": 1.9,
@@ -52,9 +80,10 @@
     "shopifyTransactionFeePercent": 0,
     "defaultMarginPercent": 40
   },
+
   "cogsSheet": {
+    "_comment": "Optional. Link a Google Sheet with CJ purchase prices per SKU.",
     "spreadsheetId": "YOUR_GOOGLE_SHEET_ID",
-    "sheetUrl": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID",
     "sheetName": "Sheet1",
     "headerRow": 1,
     "productIdentifierColumn": "A",
@@ -62,10 +91,12 @@
     "matchBy": "sku",
     "serviceAccountFile": "service-account.json"
   },
+
   "supplier": {
-    "name": "Your Supplier Name",
-    "contact": "supplier@example.com"
+    "name": "CJ Dropshipping",
+    "contact": ""
   },
+
   "notifications": {
     "telegram": {
       "enabled": true,

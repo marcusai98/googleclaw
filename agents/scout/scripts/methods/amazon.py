@@ -1,166 +1,207 @@
 #!/usr/bin/env python3
 """
-SCOUT — Method 2: Amazon Product Advertising API
-Searches Amazon for products matching trend keywords.
-Returns: title, ASIN, BSR, price, review count, product URL.
-Used for: demand proof (BSR) and selling price ceiling.
+SCOUT — Method 2: Amazon via Apify
+Searches Amazon for products matching trend keywords using the Apify
+Amazon Product Scraper actor (apify/amazon-product-scraper).
+
+No Amazon Associate account needed. Just an Apify token.
+Returns: title, price, BSR, review count, rating, product URL.
+Used for: demand proof + selling price ceiling.
 """
 
-import requests
+import json
 import time
-import hmac
-import hashlib
-import datetime
+import urllib.request
+import urllib.error
 from typing import Optional
 
+APIFY_BASE  = "https://api.apify.com/v2"
+ACTOR_ID    = "apify~amazon-product-scraper"
 
-AMAZON_HOST  = "webservices.amazon.{marketplace}"
-AMAZON_REGION_MAP = {
-    "NL": ("nl", "eu-west-1"),
-    "DE": ("de", "eu-west-1"),
-    "UK": ("co.uk", "eu-west-1"),
-    "US": ("com", "us-east-1"),
-    "FR": ("fr", "eu-west-1"),
+# Amazon domain per market
+AMAZON_DOMAIN_MAP = {
+    "NL": "amazon.nl",
+    "DE": "amazon.de",
+    "UK": "amazon.co.uk",
+    "US": "amazon.com",
+    "FR": "amazon.fr",
+    "BE": "amazon.com.be",
+    "ES": "amazon.es",
+    "IT": "amazon.it",
 }
 
 
-def _sign(key: bytes, msg: str) -> bytes:
-    return hmac.new(key, msg.encode("utf-8"), hashlib.sha256).digest()
-
-
-def _get_signature_key(secret: str, date: str, region: str, service: str) -> bytes:
-    k = _sign(("AWS4" + secret).encode("utf-8"), date)
-    k = _sign(k, region)
-    k = _sign(k, service)
-    k = _sign(k, "aws4_request")
-    return k
-
-
-def search_items(keyword: str, cfg: dict, marketplace: str = "NL") -> list:
+def _apify_run(token: str, input_data: dict, timeout_secs: int = 90) -> list:
     """
-    Search Amazon PA-API for products matching keyword.
-    Uses SearchItems endpoint.
+    Run an Apify actor synchronously and return dataset items.
+    Uses run-sync-get-dataset-items for clean one-call execution.
     """
+    url = (
+        f"{APIFY_BASE}/acts/{ACTOR_ID}/run-sync-get-dataset-items"
+        f"?token={token}&timeout={timeout_secs}&memory=256"
+    )
+    payload = json.dumps(input_data).encode("utf-8")
+    req = urllib.request.Request(
+        url, data=payload,
+        headers={"Content-Type": "application/json"},
+        method="POST"
+    )
     try:
-        import paapi5_python_sdk as paapi
-    except ImportError:
-        print("[SCOUT/Amazon] paapi5-python-sdk not installed — pip install paapi5-python-sdk")
+        with urllib.request.urlopen(req, timeout=timeout_secs + 15) as r:
+            return json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        body = e.read().decode()[:300]
+        print(f"[SCOUT/Amazon/Apify] HTTP {e.code}: {body}")
         return []
-
-    tld, region = AMAZON_REGION_MAP.get(marketplace, ("com", "us-east-1"))
-    amz_cfg     = cfg.get("amazon", {})
-    access_key  = amz_cfg.get("accessKey", "")
-    secret_key  = amz_cfg.get("secretKey", "")
-    partner_tag = amz_cfg.get("partnerTag", "")
-
-    if not access_key or not partner_tag:
-        print("[SCOUT/Amazon] No Amazon PA-API credentials in config — skipping")
-        return []
-
-    try:
-        from paapi5_python_sdk.api.default_api import DefaultApi
-        from paapi5_python_sdk.models.search_items_request import SearchItemsRequest
-        from paapi5_python_sdk.models.partner_type import PartnerType
-        from paapi5_python_sdk.models.search_index import SearchIndex
-
-        client = DefaultApi(
-            access_key=access_key,
-            secret_key=secret_key,
-            host=f"webservices.amazon.{tld}",
-            region=region,
-        )
-
-        req = SearchItemsRequest(
-            partner_tag=partner_tag,
-            partner_type=PartnerType.ASSOCIATES,
-            keywords=keyword,
-            search_index=SearchIndex.ALL,
-            item_count=10,
-            resources=[
-                "ItemInfo.Title",
-                "Offers.Listings.Price",
-                "BrowseNodeInfo.BrowseNodes.SalesRank",
-                "CustomerReviews.Count",
-                "CustomerReviews.StarRating",
-                "Images.Primary.Large",
-            ]
-        )
-
-        resp = client.search_items(req)
-        return resp.search_result.items if resp.search_result else []
-
     except Exception as e:
-        print(f"[SCOUT/Amazon] Search failed for '{keyword}': {e}")
+        print(f"[SCOUT/Amazon/Apify] Request failed: {e}")
         return []
 
 
-def parse_item(item, keyword: str, trend: dict) -> Optional[dict]:
-    """Normalize Amazon PA-API item to SCOUT candidate format."""
+def parse_item(raw: dict, keyword: str, trend: dict) -> Optional[dict]:
+    """Normalize an Apify Amazon scraper result to SCOUT candidate format."""
     try:
-        title = item.item_info.title.display_value if item.item_info else ""
-        asin  = item.asin or ""
+        title = raw.get("productName") or raw.get("name") or ""
+        if not title:
+            return None
 
-        # Price
+        asin  = raw.get("asin") or ""
+        url   = raw.get("url") or (f"https://amazon.com/dp/{asin}" if asin else "")
+
+        # Price — multiple possible fields depending on actor version
         price = 0.0
-        try:
-            price = float(item.offers.listings[0].price.amount)
-        except Exception:
-            pass
+        for field in ("price", "currentPrice", "priceAmount"):
+            raw_price = raw.get(field)
+            if raw_price:
+                try:
+                    price = float(str(raw_price).replace("€", "").replace("$", "").replace(",", ".").strip())
+                    break
+                except ValueError:
+                    pass
 
-        # BSR
-        bsr = 999999
+        # BSR — lower is better
+        bsr = raw.get("bestSellerRank") or raw.get("bsrRank") or 999999
         try:
-            nodes = item.browse_node_info.browse_nodes
-            if nodes:
-                ranks = [n.sales_rank for n in nodes if n.sales_rank]
-                bsr   = min(ranks) if ranks else 999999
-        except Exception:
-            pass
+            bsr = int(str(bsr).replace(",", "").replace(".", "").strip())
+        except (ValueError, TypeError):
+            bsr = 999999
 
         # Reviews
         review_count = 0
-        try:
-            review_count = item.customer_reviews.count or 0
-        except Exception:
-            pass
+        for field in ("reviewsCount", "ratingsTotal", "numberOfRatings"):
+            val = raw.get(field)
+            if val:
+                try:
+                    review_count = int(str(val).replace(",", ""))
+                    break
+                except (ValueError, TypeError):
+                    pass
+
+        # Rating
+        rating = 0.0
+        for field in ("stars", "rating", "starRating"):
+            val = raw.get(field)
+            if val:
+                try:
+                    rating = float(str(val).replace(",", "."))
+                    break
+                except (ValueError, TypeError):
+                    pass
+
+        image = raw.get("thumbnailImage") or raw.get("image") or ""
 
         return {
             "title":         title,
             "source":        "amazon",
             "amazonAsin":    asin,
-            "amazonUrl":     f"https://www.amazon.com/dp/{asin}",
+            "amazonUrl":     url,
             "amazonPrice":   round(price, 2),
             "amazonBsr":     bsr,
             "reviewCount":   review_count,
+            "rating":        round(rating, 1),
+            "imageUrl":      image,
             "matchedTrend":  trend["name"],
             "trendVolume":   trend.get("monthlyVolume", 0),
             "trendScore":    trend.get("score", 0),
         }
-    except Exception:
+    except Exception as e:
+        print(f"[SCOUT/Amazon/Apify] parse_item error: {e}")
         return None
 
 
 def fetch(trends: list, cfg: dict, limit_per_trend: int = 5) -> list:
     """
-    For each trend, search Amazon and return candidates.
+    For each trend, search Amazon via Apify and return candidates.
+    Batches keywords to minimise Apify actor runs (= cost).
     """
-    marketplace = cfg.get("store", {}).get("market", "NL").upper()
-    candidates  = []
-    min_price   = cfg.get("scout", {}).get("minSellingPrice", 40)
+    apify_token = cfg.get("apify", {}).get("token", "")
+    if not apify_token:
+        print("[SCOUT/Amazon/Apify] No Apify token in config — skipping")
+        return []
 
+    market     = cfg.get("store", {}).get("market", "NL").upper()[:2]
+    domain     = AMAZON_DOMAIN_MAP.get(market, "amazon.com")
+    min_price  = cfg.get("scout", {}).get("minSellingPrice", 40)
+
+    # Collect keywords across all trends (deduplicated, max 2 per trend)
+    keyword_to_trends: dict = {}
     for trend in trends:
         keywords = trend.get("keywords", [trend.get("name", "")])
         for kw in keywords[:2]:
-            items = search_items(kw, cfg, marketplace)
-            for item in items:
-                p = parse_item(item, kw, trend)
-                if not p or not p["title"]:
-                    continue
-                # Hard filter: price too low (if detectable)
-                if 0 < p["amazonPrice"] < min_price:
-                    continue
-                candidates.append(p)
-            time.sleep(1.0)  # Amazon PA-API rate limit: 1 req/sec
+            kw_clean = kw.strip()
+            if not kw_clean:
+                continue
+            if kw_clean not in keyword_to_trends:
+                keyword_to_trends[kw_clean] = []
+            keyword_to_trends[kw_clean].append(trend)
 
-    print(f"[SCOUT/Amazon] Found {len(candidates)} raw candidates")
+    if not keyword_to_trends:
+        print("[SCOUT/Amazon/Apify] No keywords to search")
+        return []
+
+    # Build Apify input — batch all keywords in one run to save cost
+    queries = [
+        {"searchQuery": kw, "domain": domain}
+        for kw in list(keyword_to_trends.keys())[:20]   # cap at 20 keywords per run
+    ]
+
+    input_data = {
+        "queries":          queries,
+        "maxItemsPerSearch": limit_per_trend * 2,
+        "proxy": {
+            "useApifyProxy": True,
+            "apifyProxyGroups": ["RESIDENTIAL"]
+        }
+    }
+
+    print(f"[SCOUT/Amazon/Apify] Running actor for {len(queries)} keywords on {domain}...")
+    raw_items = _apify_run(apify_token, input_data)
+    print(f"[SCOUT/Amazon/Apify] Actor returned {len(raw_items)} raw items")
+
+    # Map items back to trend(s)
+    candidates = []
+    for raw in raw_items:
+        # Determine which keyword triggered this item
+        search_query = raw.get("searchQuery") or raw.get("keyword") or ""
+        matched_trends = keyword_to_trends.get(search_query, [])
+
+        # Fallback: try to match by title keywords
+        if not matched_trends:
+            for kw, t_list in keyword_to_trends.items():
+                if kw.lower() in (raw.get("productName") or "").lower():
+                    matched_trends = t_list
+                    break
+        if not matched_trends:
+            matched_trends = [trends[0]] if trends else []
+
+        for trend in matched_trends[:1]:  # attach to first matching trend
+            item = parse_item(raw, search_query, trend)
+            if not item:
+                continue
+            # Hard filter: price too low (if price is known)
+            if 0 < item["amazonPrice"] < min_price:
+                continue
+            candidates.append(item)
+
+    print(f"[SCOUT/Amazon/Apify] {len(candidates)} candidates after filtering")
     return candidates

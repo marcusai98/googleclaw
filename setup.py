@@ -89,6 +89,40 @@ def ask_int(prompt, default):
 
 # ── API Tests ─────────────────────────────────────────────────────────────
 
+def test_cj(email, password):
+    try:
+        data = json.dumps({"email": email, "password": password}).encode()
+        req = urllib.request.Request(
+            "https://developers.cjdropshipping.com/api2.0/v1/authentication/getAccessToken",
+            data=data,
+            headers={"Content-Type": "application/json"}
+        )
+        with urllib.request.urlopen(req, timeout=10) as r:
+            resp = json.loads(r.read())
+        if resp.get("result"):
+            return True, "ingelogd ✓"
+        return False, resp.get("message", "onbekende fout")
+    except urllib.error.HTTPError as e:
+        return False, f"HTTP {e.code}"
+    except Exception as e:
+        return False, str(e)
+
+
+def test_apify(token):
+    try:
+        url = f"https://api.apify.com/v2/users/me?token={token}"
+        req = urllib.request.Request(url)
+        with urllib.request.urlopen(req, timeout=8) as r:
+            data = json.loads(r.read())
+        username = data.get("data", {}).get("username", "?")
+        plan     = data.get("data", {}).get("plan", {}).get("id", "?")
+        return True, f"account: {username} (plan: {plan})"
+    except urllib.error.HTTPError as e:
+        return False, f"HTTP {e.code}"
+    except Exception as e:
+        return False, str(e)
+
+
 def test_shopify(domain, token):
     try:
         url = f"https://{domain}/admin/api/2024-01/shop.json"
@@ -413,8 +447,80 @@ def main():
         "refreshToken":  gads_rt
     }
 
-    # ── 4. AI providers ────────────────────────────────────────────────────
-    section("4/7 — AI providers")
+    # ── 4. CJ Dropshipping ────────────────────────────────────────────────
+    section("4/9 — CJ Dropshipping")
+
+    print(f"  {c.DIM}CJ wordt gebruikt door SCOUT (producten zoeken) en LISTER (bestellen + variants).{c.RESET}")
+    print(f"  {c.DIM}Heb je nog geen CJ account? → https://cjdropshipping.com{c.RESET}")
+    print()
+
+    cj_email = ask("CJ account e-mail")
+    cj_pass  = ask("CJ wachtwoord", secret=True)
+
+    info("Verbinding testen...")
+    success, detail = test_cj(cj_email, cj_pass)
+    if success:
+        ok(f"CJ Dropshipping verbonden — {detail}")
+    else:
+        warn(f"CJ test mislukt ({detail}) — toch doorgaan?")
+        if not ask_bool("Doorgaan", True):
+            sys.exit(1)
+
+    config["cj"] = {"email": cj_email, "password": cj_pass}
+
+    # ── 5. Apify (Amazon research) ─────────────────────────────────────────
+    section("5/9 — Apify (Amazon productonderzoek)")
+
+    print(f"  {c.DIM}Apify wordt gebruikt door SCOUT om Amazon te scrapen voor vraagbewijs (BSR, reviews, prijsplafond).{c.RESET}")
+    print(f"  {c.DIM}Geen Amazon-account nodig. Gratis tier beschikbaar op https://apify.com{c.RESET}")
+    print()
+
+    apify_token = ask("Apify API token", secret=True)
+
+    info("Verbinding testen...")
+    success, detail = test_apify(apify_token)
+    if success:
+        ok(f"Apify verbonden — {detail}")
+    else:
+        warn(f"Apify test mislukt ({detail}) — toch doorgaan?")
+        if not ask_bool("Doorgaan", True):
+            sys.exit(1)
+
+    config["apify"] = {"token": apify_token}
+
+    # ── 6. Competitor stores ───────────────────────────────────────────────
+    section("6/9 — Competitor stores")
+
+    print(f"  {c.DIM}SCOUT scrapet concurrent-Shopify stores via /products.json (publiek endpoint).{c.RESET}")
+    print(f"  {c.DIM}Voeg minimaal 2-3 directe concurrenten in jouw niche toe.{c.RESET}")
+    print(f"  {c.DIM}Iedere Shopify store is geldig — bijv. https://competitor.myshopify.com{c.RESET}")
+    print()
+
+    competitor_urls = []
+    print(f"  {c.CYAN}Voeg competitor URLs toe (één per keer). Lege Enter = klaar.{c.RESET}")
+    print()
+    while True:
+        url = ask(f"  Competitor URL {len(competitor_urls) + 1}", default="" if competitor_urls else None)
+        if not url:
+            if not competitor_urls:
+                warn("Geen competitor URLs — SCOUT slaat deze bron over. Voeg later handmatig toe in config.json.")
+            break
+        # Normalize
+        if not url.startswith("http"):
+            url = "https://" + url
+        competitor_urls.append(url)
+        ok(f"Toegevoegd: {url}")
+
+    if competitor_urls:
+        ok(f"{len(competitor_urls)} competitor store(s) geconfigureerd")
+
+    config["scout"] = {
+        "minSellingPrice": 40,
+        "competitors": {"urls": competitor_urls}
+    }
+
+    # ── 7. AI providers ────────────────────────────────────────────────────
+    section("7/9 — AI providers")
 
     print(f"  {c.DIM}GoogleClaw gebruikt: OpenAI (SCOUT/MIDAS/FEED), Claude (LISTER copy), Gemini (images), Manus (TRENDS research){c.RESET}")
     print()
@@ -443,8 +549,8 @@ def main():
     ok(f"Manus OK — {detail}") if ok_flag else warn(f"Manus test mislukt: {detail}")
     config["manus"] = {"apiKey": manus_key}
 
-    # ── 5. OpenClaw gateway ────────────────────────────────────────────────
-    section("5/7 — OpenClaw gateway")
+    # ── 8. OpenClaw gateway ────────────────────────────────────────────────
+    section("8/9 — OpenClaw gateway")
 
     gw_url   = ask("Gateway URL (bijv. ws://jouw-vps:63783)", "ws://localhost:63783")
     gw_token = ask("Gateway token", secret=True)
@@ -454,8 +560,8 @@ def main():
     ok(f"Gateway OK — {detail}") if ok_flag else warn(f"Gateway test mislukt: {detail}")
     config["openclaw"] = {"gatewayUrl": gw_url, "gatewayToken": gw_token}
 
-    # ── 6. Drempelwaarden & kosten ─────────────────────────────────────────
-    section("6/7 — Drempelwaarden & kosten")
+    # ── 9. Drempelwaarden & kosten ─────────────────────────────────────────
+    section("9/9 — Drempelwaarden & kosten")
 
     print(f"  {c.DIM}Druk Enter om standaardwaarden te accepteren.{c.RESET}")
     print()
@@ -513,8 +619,8 @@ def main():
         "contact": ask("Leverancier contact (bijv. je@email.com)", "")
     }
 
-    # ── 7. Workspace & crons ───────────────────────────────────────────────
-    section("7/7 — Workspace & crons")
+    # ── 10. Workspace & crons ──────────────────────────────────────────────
+    section("10/10 — Workspace & crons")
 
     workspace_path = os.path.expanduser(
         ask("OpenClaw workspace pad", "~/.openclaw/workspace")

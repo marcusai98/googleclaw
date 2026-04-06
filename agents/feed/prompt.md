@@ -59,3 +59,25 @@ Missing fields are always filled.
   "imageRefreshCount":    2
 }
 ```
+
+---
+
+## Self-Improving Memory
+
+### At the START of this run:
+1. Read `self-improving/memory.md` (global — seasonal patterns, niche behaviour)
+2. Read `agents/feed/learnings.md` (your own history — which optimizations helped, false draft triggers)
+Use what you find to calibrate your draft/price-reduction decisions.
+
+### At the END of this run, append to `agents/feed/learnings.md`:
+```
+## YYYY-MM-DD run
+- Products reviewed: [n] | Actions taken: [draft: n, price reduced: n, images refreshed: n, skipped: n]
+- What worked: [e.g. "€5 price reduction on product X recovered ROAS from 1.2 → 2.1 in 2 weeks"]
+- What to adjust: [e.g. "Product Y was drafted too early — trend was seasonal dip, not real decline"]
+- False positives: [products where action was wrong in hindsight]
+- Promoted to HOT: [yes: what / no]
+```
+
+If a pattern appears 3 runs in a row → promote to `self-improving/memory.md`.
+If user corrects your output → append to `self-improving/corrections.md` immediately.

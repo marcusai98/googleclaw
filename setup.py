@@ -264,10 +264,12 @@ def test_openclaw(gateway_url, gateway_token):
 
 # ── Workspace setup ───────────────────────────────────────────────────────
 
-def create_workspace(workspace_path):
+def create_workspace(workspace_path, config=None):
     dirs = [
         workspace_path,
         os.path.join(workspace_path, "googleclaw"),
+        os.path.join(workspace_path, "googleclaw", "self-improving"),
+        os.path.join(workspace_path, "googleclaw", "self-improving", "archive"),
         os.path.join(workspace_path, "googleclaw", "agents"),
         os.path.join(workspace_path, "googleclaw", "agents", "trends"),
         os.path.join(workspace_path, "googleclaw", "agents", "midas"),
@@ -277,6 +279,46 @@ def create_workspace(workspace_path):
     ]
     for d in dirs:
         os.makedirs(d, exist_ok=True)
+
+    # ── Self-improving memory files ──────────────────────────────────────────
+    si_path = os.path.join(workspace_path, "googleclaw", "self-improving")
+
+    global_mem = os.path.join(si_path, "memory.md")
+    if not os.path.exists(global_mem):
+        with open(global_mem, "w") as f:
+            f.write("# GoogleClaw — Global Memory (HOT Tier)\n")
+            f.write("*Store-wide patterns. Loaded by all agents at the start of every run.*\n")
+            f.write("*Max 80 lines. Promote from agent learnings after 3x repetition.*\n\n---\n\n")
+            f.write("## Store Context\n")
+            f.write(f"- Niche: {config.get('store', {}).get('niche', '[set during setup]')}\n")
+            f.write(f"- Market: {config.get('store', {}).get('market', '[set during setup]')}\n")
+            f.write(f"- Language: {config.get('store', {}).get('language', '[set during setup]')}\n\n")
+            f.write("## Niche Performance\n*(Empty — agents write here after observing patterns)*\n\n")
+            f.write("## Seasonal Patterns\n*(Empty — TRENDS writes here after seasonal observations)*\n\n")
+            f.write("## Market Behaviour\n*(Empty — MIDAS/SCOUT write here after pricing observations)*\n\n")
+            f.write("## Supplier Patterns\n*(Empty — SCOUT/LISTER write here after CJ observations)*\n\n")
+            f.write("## Copy & Creative\n*(Empty — LISTER writes here after copy performance observations)*\n")
+
+    corrections = os.path.join(si_path, "corrections.md")
+    if not os.path.exists(corrections):
+        with open(corrections, "w") as f:
+            f.write("# GoogleClaw — Corrections Log\n")
+            f.write("*Append immediately when user corrects agent output. Max 50 entries.*\n\n")
+            f.write("| Date | Agent | What went wrong | Correction | Lesson |\n")
+            f.write("|------|-------|----------------|------------|--------|\n")
+
+    # Per-agent learnings.md
+    for agent in ["trends", "midas", "scout", "lister", "feed"]:
+        learnings = os.path.join(workspace_path, "googleclaw", "agents", agent, "learnings.md")
+        if not os.path.exists(learnings):
+            with open(learnings, "w") as f:
+                f.write(f"# {agent.upper()} — Learnings\n")
+                f.write("*Written at the end of each run. Load at the start of every run.*\n")
+                f.write("*Max 60 lines. Promote to self-improving/memory.md after 3x repetition.*\n\n---\n\n")
+                f.write("## What Works\n*(Empty — written after first run)*\n\n")
+                f.write("## What to Avoid\n*(Empty — written after first run)*\n\n")
+                f.write("## Calibrations\n*(Empty — threshold/scoring adjustments)*\n\n")
+                f.write("## Open Questions\n*(Things to watch across next few runs)*\n")
 
     # Create queue.json, dashboard.json, agent-status.json
     queue_path = os.path.join(workspace_path, "googleclaw", "queue.json")
@@ -627,7 +669,7 @@ def main():
     )
 
     info(f"Workspace aanmaken in: {workspace_path}")
-    create_workspace(workspace_path)
+    create_workspace(workspace_path, config=config)
     ok("Workspace mappenstructuur aangemaakt")
 
     # Save config.json
@@ -635,6 +677,29 @@ def main():
     with open(config_path, "w") as f:
         json.dump(config, f, indent=2)
     ok(f"config.json opgeslagen in: {config_path}")
+
+    # Install self-improving skill via clawhub
+    print()
+    si_choice = ask_bool("Self-Improving skill installeren via clawhub (agents leren van elke run)")
+    if si_choice:
+        info("Installeren via clawhub...")
+        try:
+            result = subprocess.run(
+                ["clawhub", "install", "self-improving", "-g"],
+                capture_output=True, text=True, timeout=30
+            )
+            if result.returncode == 0:
+                ok("Self-Improving skill geïnstalleerd")
+            else:
+                warn(f"clawhub install mislukt — memory-bestanden zijn wél aangemaakt in workspace")
+                dim("Installeer later handmatig: clawhub install self-improving -g")
+        except FileNotFoundError:
+            warn("clawhub CLI niet gevonden — memory-bestanden zijn wél aangemaakt in workspace")
+            dim("Installeer clawhub via: npm install -g clawhub")
+        except Exception as e:
+            warn(f"Onverwachte fout: {e}")
+    else:
+        dim("Self-Improving skill overgeslagen — agents gebruiken alleen de lokale memory-bestanden in workspace.")
 
     # Register crons
     print()

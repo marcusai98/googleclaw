@@ -51,3 +51,25 @@ CJ: 8 | Amazon: 6 | Competitors: 5 → 19 raw → 7 passed scoring
 Top: "Draagbare nekventilator" (score 91, all 3 sources)
 Pushed to Inbox: 7 cards
 ```
+
+---
+
+## Self-Improving Memory
+
+### At the START of this run:
+1. Read `self-improving/memory.md` (global store context — niche performance, supplier patterns)
+2. Read `agents/scout/learnings.md` (your own history — scoring calibrations, good/bad competitor sources)
+Use what you find to adjust scoring weights and filter out known dead ends.
+
+### At the END of this run, append to `agents/scout/learnings.md`:
+```
+## YYYY-MM-DD run
+- Candidates found: [n] | Sent to inbox: [n] | Approved by user: [n]
+- Best source today: [cj / amazon / competitor — why]
+- What worked: [e.g. "CJ category X consistently surfaces €40+ products with fast shipping"]
+- What to adjust: [e.g. "Competitor store Y is out of niche — remove from config"]
+- Promoted to HOT: [yes: what / no]
+```
+
+If a pattern appears 3 runs in a row → promote to `self-improving/memory.md`.
+If user corrects your output → append to `self-improving/corrections.md` immediately.

@@ -50,3 +50,25 @@ Trends found: {n}
 Top trends: {name} ({score}), {name} ({score}), {name} ({score})
 Status: OK / WARNING: only {n} trends validated / ERROR: {message}
 ```
+
+---
+
+## Self-Improving Memory
+
+### At the START of this run:
+1. Read `self-improving/memory.md` (global store context — niche performance, seasonal patterns)
+2. Read `agents/trends/learnings.md` (your own history — what keyword types worked, what to skip)
+Use what you find to adjust your keyword selection and validation thresholds.
+
+### At the END of this run, append to `agents/trends/learnings.md`:
+```
+## YYYY-MM-DD run
+- Trends found: [n] / validated: [n]
+- Top performer: [trend name] (score [x])
+- What worked: [e.g. "fashion accessories keywords returned high-volume results"]
+- What to adjust: [e.g. "home decor keywords return low Manus confidence — deprioritize"]
+- Promoted to HOT: [yes: what / no]
+```
+
+If a pattern appears 3 runs in a row → promote to `self-improving/memory.md`.
+If user corrects your output → append to `self-improving/corrections.md` immediately.

@@ -61,3 +61,24 @@ Status: OK / ERROR: {message}
 - Google Ads API down → use 0 for spend, note in state.md as "spend data unavailable"
 - Google Sheets unavailable → use default margin from config, note in state.md
 - Any unhandled exception → write full error to state.md, notify via Telegram if `notifications.telegram` is enabled in config
+
+---
+
+## Self-Improving Memory
+
+### At the START of this run:
+1. Read `self-improving/memory.md` (global store context)
+2. Read `agents/midas/learnings.md` (your own history — ROAS patterns, false positives, store exceptions)
+Use what you find to calibrate your alert thresholds and scaling judgements.
+
+### At the END of this run, append to `agents/midas/learnings.md`:
+```
+## YYYY-MM-DD run
+- Stores reviewed: [n] | Alerts raised: [n] | Scale signals: [n]
+- What worked: [e.g. "3-day ROAS window more reliable than 7-day for this store"]
+- What to adjust: [e.g. "Store X is an exception — holiday campaign, ignore low ROAS"]
+- Promoted to HOT: [yes: what / no]
+```
+
+If a pattern appears 3 runs in a row → promote to `self-improving/memory.md`.
+If user corrects your output → append to `self-improving/corrections.md` immediately.

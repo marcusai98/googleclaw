@@ -4,9 +4,13 @@ LISTER — GoogleClaw Product Listing Agent
 Triggered ONLY after user approves a SCOUT candidate.
 Creates full Shopify listing: SEO copy (Claude) + images (Gemini) + publish.
 
+CJ Dropshipping is NOT used here. All candidate data (title, cjPrice, imageUrl,
+competitorPrice, etc.) is already present from SCOUT's output.
+LISTER's job: take that data + generate copy/images + publish to Shopify.
+
 Usage:
     python3 lister.py --config config.json \
-                      --candidate '{"title": "...", "cjProductId": "..."}' \
+                      --candidate '{"title": "...", "cjPrice": 12.50, ...}' \
                       --queue data/queue.json
 
 Or via queue (card ID):
@@ -18,7 +22,6 @@ Or via queue (card ID):
 import json
 import argparse
 import datetime
-import requests
 from pathlib import Path
 
 from steps import pricing, copy, images, collections, shopify_publish
@@ -37,43 +40,6 @@ def save_json(data, path: str):
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
-
-
-def get_cj_token(cfg: dict) -> str:
-    """Get CJ Dropshipping access token."""
-    cj_cfg = cfg.get("cj", {})
-    if not cj_cfg.get("email"):
-        return ""
-    try:
-        r = requests.post(
-            "https://developers.cjdropshipping.com/api2.0/v1/authentication/getAccessToken",
-            json={"email": cj_cfg["email"], "password": cj_cfg["password"]},
-            timeout=15
-        )
-        r.raise_for_status()
-        data = r.json()
-        return data["data"]["accessToken"] if data.get("result") else ""
-    except Exception as e:
-        print(f"[LISTER] CJ auth failed: {e}")
-        return ""
-
-
-def fetch_cj_product(cj_product_id: str, token: str) -> dict:
-    """Fetch full CJ product details (variants, images, weight, etc.)."""
-    if not cj_product_id or not token:
-        return {}
-    try:
-        r = requests.get(
-            "https://developers.cjdropshipping.com/api2.0/v1/product/query",
-            headers={"CJ-Access-Token": token},
-            params={"pid": cj_product_id},
-            timeout=15
-        )
-        r.raise_for_status()
-        return r.json().get("data", {})
-    except Exception as e:
-        print(f"[LISTER] CJ product fetch failed: {e}")
-        return {}
 
 
 def mark_card_listed(queue: dict, card_id: str, result: dict) -> dict:
@@ -95,12 +61,6 @@ def run(candidate: dict, cfg: dict, card_id: str = "", queue_path: str = "data/q
     print(f"\n[LISTER] Starting pipeline for: '{title}'")
     print(f"[LISTER] {'='*60}")
 
-    # ── 0. CJ auth + product data ────────────────────────────────────────────
-    cj_token       = get_cj_token(cfg)
-    cj_product_id  = candidate.get("cjProductId", "")
-    cj_product_data = fetch_cj_product(cj_product_id, cj_token) if cj_product_id else {}
-    print(f"[LISTER] CJ data: {'loaded' if cj_product_data else 'not available'}")
-
     # ── 1. Pricing ────────────────────────────────────────────────────────────
     print(f"[LISTER] Step 1: Pricing...")
     price_result = pricing.determine_price(candidate, cfg)
@@ -113,7 +73,7 @@ def run(candidate: dict, cfg: dict, card_id: str = "", queue_path: str = "data/q
 
     # ── 3. Images ─────────────────────────────────────────────────────────────
     print(f"[LISTER] Step 3: Preparing images...")
-    image_list = images.prepare_images(candidate, cfg, cj_token)
+    image_list = images.prepare_images(candidate, cfg)
     print(f"[LISTER] Images ready: {len(image_list)}")
 
     # ── 4. Collections & Tags ─────────────────────────────────────────────────
@@ -124,7 +84,7 @@ def run(candidate: dict, cfg: dict, card_id: str = "", queue_path: str = "data/q
     print(f"[LISTER] Step 5: Publishing to Shopify...")
     result = shopify_publish.publish(
         candidate, price_result, copy_result,
-        image_list, collection_data, cj_product_data, cfg
+        image_list, collection_data, cfg
     )
 
     print(f"\n[LISTER] ✅ Listed: '{result['title']}'")

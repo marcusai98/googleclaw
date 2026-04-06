@@ -4,8 +4,12 @@ LISTER — Step 5: Shopify Publish
 Builds the full Shopify product payload and creates it via Admin API.
 - Status: active (live) or draft, based on config
 - All sales channels included
-- All variants from CJ
+- Single default variant (Shopify manages inventory, supplier fulfills manually)
 - Full metadata: SEO, collections, tags
+
+CJ is not used here. All candidate data comes from SCOUT.
+Variants are created as a clean single-variant product — the seller
+can add size/color variants manually in Shopify if needed.
 """
 
 import requests
@@ -36,53 +40,19 @@ def get_shopify_token(cfg: dict) -> str:
     return ""
 
 
-def build_variants(cj_product_data: dict, price: float, compare_at: float | None) -> list:
-    """Build Shopify variant array from CJ product variants."""
-    cj_variants = cj_product_data.get("variants", [])
-    if not cj_variants:
-        # Single variant fallback
-        return [{
-            "price":            str(round(price, 2)),
-            "compare_at_price": str(round(compare_at, 2)) if compare_at else None,
-            "inventory_management": "shopify",
-            "fulfillment_service":  "manual",
-            "requires_shipping":    True,
-            "taxable":              True,
-        }]
-
-    shopify_variants = []
-    seen = set()
-
-    for v in cj_variants:
-        # CJ variant fields
-        option1 = v.get("variantNameEn", "") or v.get("variantSku", "")
-        sku     = v.get("variantSku", "")
-        weight  = float(v.get("variantWeight", 0) or 0)
-
-        key = option1.lower()
-        if key in seen:
-            continue
-        seen.add(key)
-
-        variant = {
-            "option1":          option1,
-            "sku":              sku,
-            "price":            str(round(price, 2)),
-            "compare_at_price": str(round(compare_at, 2)) if compare_at else None,
-            "weight":           weight,
-            "weight_unit":      "g",
-            "inventory_management": "shopify",
-            "fulfillment_service":  "manual",
-            "requires_shipping":    True,
-            "taxable":              True,
-        }
-        shopify_variants.append(variant)
-
-    return shopify_variants if shopify_variants else [{
-        "price":            str(round(price, 2)),
-        "compare_at_price": str(round(compare_at, 2)) if compare_at else None,
+def build_variant(price: float, compare_at: float | None) -> list:
+    """
+    Build a single default Shopify variant.
+    Variants (size/color) can be added manually in Shopify after listing.
+    """
+    return [{
+        "price":                str(round(price, 2)),
+        "compare_at_price":     str(round(compare_at, 2)) if compare_at else None,
         "inventory_management": "shopify",
+        "fulfillment_service":  "manual",
         "requires_shipping":    True,
+        "taxable":              True,
+        "inventory_quantity":   99,
     }]
 
 
@@ -172,7 +142,7 @@ def add_to_collections(domain: str, token: str, product_id: int, collection_titl
 
 
 def publish(candidate: dict, pricing: dict, copy: dict, images: list,
-            collection_data: dict, cj_product_data: dict, cfg: dict) -> dict:
+            collection_data: dict, cfg: dict) -> dict:
     """
     Create the Shopify product and return result dict.
     """
@@ -188,8 +158,8 @@ def publish(candidate: dict, pricing: dict, copy: dict, images: list,
     price      = pricing["price"]
     compare_at = pricing.get("compareAtPrice")
 
-    # Build variants from CJ data
-    variants = build_variants(cj_product_data, price, compare_at)
+    # Build single default variant
+    variants = build_variant(price, compare_at)
 
     # Build product payload
     product_payload = {
@@ -201,7 +171,7 @@ def publish(candidate: dict, pricing: dict, copy: dict, images: list,
             "tags":             ", ".join(collection_data["tags"]),
             "status":           status,
             "variants":         variants,
-            "options":          [{"name": "Size"}] if len(variants) > 1 else [],
+            "options":          [],
             "metafields": [
                 {
                     "namespace": "seo",

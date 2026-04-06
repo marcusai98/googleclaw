@@ -2,10 +2,12 @@
 """
 LISTER — Step 3: Image handling
 Strategy:
-  - Collect CJ product images (priority source)
+  - Use imageUrl from SCOUT candidate (competitor or CJ catalog image captured during discovery)
   - If total < MIN_IMAGES → generate Gemini visuals to supplement
   - If config.lister.imageMode == "optimize_all" → replace ALL with Gemini-generated
-  - If config.lister.imageMode == "supplement"   → CJ/competitor first, Gemini fills gaps
+  - If config.lister.imageMode == "supplement"   → candidate image first, Gemini fills gaps
+
+CJ API is NOT called here. Images captured by SCOUT are passed via the candidate object.
 Returns list of image dicts ready for Shopify upload.
 """
 
@@ -18,25 +20,6 @@ from pathlib import Path
 
 MIN_IMAGES    = 5
 GEMINI_API    = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent"
-
-
-def fetch_cj_images(cj_product_id: str, token: str) -> list[str]:
-    """Fetch all image URLs for a CJ product."""
-    if not cj_product_id or not token:
-        return []
-    try:
-        r = requests.get(
-            "https://developers.cjdropshipping.com/api2.0/v1/product/query",
-            headers={"CJ-Access-Token": token},
-            params={"pid": cj_product_id},
-            timeout=15
-        )
-        r.raise_for_status()
-        data = r.json().get("data", {})
-        return data.get("productImageSet", "").split(",") if data.get("productImageSet") else []
-    except Exception as e:
-        print(f"[LISTER/images] CJ image fetch failed: {e}")
-        return []
 
 
 def generate_gemini_image(prompt: str, api_key: str) -> str | None:
@@ -80,10 +63,12 @@ def build_gemini_prompts(candidate: dict, count: int, store_language: str) -> li
     return styles[:count]
 
 
-def prepare_images(candidate: dict, cfg: dict, cj_token: str = "") -> list[dict]:
+def prepare_images(candidate: dict, cfg: dict) -> list[dict]:
     """
     Collect and prepare images for Shopify upload.
-    Returns list of {"src": url_or_data_uri, "alt": str, "source": "cj"|"gemini"}
+    Source images come from the SCOUT candidate (imageUrl field).
+    Gemini is used to supplement or fully replace them.
+    Returns list of {"src": url_or_data_uri, "alt": str, "source": "scout"|"gemini"}
     """
     image_mode  = cfg.get("lister", {}).get("imageMode", "supplement")
     gemini_key  = cfg.get("gemini", {}).get("apiKey", "")
@@ -92,21 +77,13 @@ def prepare_images(candidate: dict, cfg: dict, cj_token: str = "") -> list[dict]
 
     result_images = []
 
-    # ── Collect source images ────────────────────────────────────────────────
+    # ── Collect source image from SCOUT candidate ────────────────────────────
     if image_mode != "optimize_all":
-        # CJ images (first priority)
-        cj_id     = candidate.get("cjProductId", "")
-        cj_urls   = fetch_cj_images(cj_id, cj_token) if cj_id and cj_token else []
-        for url in cj_urls[:8]:  # cap at 8 from CJ
-            if url.strip():
-                result_images.append({"src": url.strip(), "alt": title, "source": "cj"})
-
-        # Competitor images as secondary (if we have competitor URL and need more)
-        # Note: competitor images are scraped from Shopify /products.json earlier
-        comp_image = candidate.get("imageUrl", "")
-        if comp_image and len(result_images) < MIN_IMAGES:
-            if not any(img["src"] == comp_image for img in result_images):
-                result_images.append({"src": comp_image, "alt": title, "source": "competitor"})
+        # SCOUT captures imageUrl from whichever source found the product
+        # (CJ catalog thumbnail, competitor Shopify image, etc.)
+        source_image = candidate.get("imageUrl", "")
+        if source_image and source_image.startswith("http"):
+            result_images.append({"src": source_image, "alt": title, "source": "scout"})
 
     # ── Generate Gemini visuals if needed ────────────────────────────────────
     if not gemini_key:

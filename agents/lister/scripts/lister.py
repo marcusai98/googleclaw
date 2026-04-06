@@ -22,9 +22,25 @@ Or via queue (card ID):
 import json
 import argparse
 import datetime
+import sys
+import os
 from pathlib import Path
 
 from steps import pricing, copy, images, collections, shopify_publish
+
+# Security utilities
+try:
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "shared"))
+    from sanitize import sanitize_product, is_suspicious
+    from audit import audit_shopify_create, audit_log
+    _security_loaded = True
+except ImportError:
+    print("[LISTER] ⚠  shared/sanitize not found — security checks skipped")
+    _security_loaded = False
+    def sanitize_product(p): return p
+    def is_suspicious(t): return False
+    def audit_shopify_create(*a, **kw): pass
+    def audit_log(*a, **kw): pass
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -58,6 +74,16 @@ def mark_card_listed(queue: dict, card_id: str, result: dict) -> dict:
 def run(candidate: dict, cfg: dict, card_id: str = "", queue_path: str = "data/queue.json"):
     """Full LISTER pipeline for one candidate."""
     title = candidate.get("title", "Unknown")
+
+    # ── Security: sanitize candidate before any processing ───────────────────
+    try:
+        candidate = sanitize_product(candidate)
+    except ValueError as e:
+        print(f"[LISTER] ✗ Security: {e}")
+        audit_log(agent="LISTER", action="security_block", resource="candidate",
+                  detail=str(e)[:200], result="blocked")
+        return {"error": "security_block", "reason": str(e)}
+
     print(f"\n[LISTER] Starting pipeline for: '{title}'")
     print(f"[LISTER] {'='*60}")
 
@@ -93,6 +119,14 @@ def run(candidate: dict, cfg: dict, card_id: str = "", queue_path: str = "data/q
     print(f"[LISTER] Price: €{result['price']} | Variants: {result['variantCount']} | Images: {result['imageCount']}")
     print(f"[LISTER] Collections: {', '.join(result['collections'])}")
     print(f"[LISTER] Status: {result['status'].upper()}")
+
+    # ── Audit log ─────────────────────────────────────────────────────────────
+    audit_shopify_create(
+        agent="LISTER",
+        product_id=str(result.get("shopifyProductId", "unknown")),
+        title=result["title"],
+        result="ok"
+    )
 
     # ── Update queue card ─────────────────────────────────────────────────────
     if card_id:

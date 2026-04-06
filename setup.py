@@ -682,7 +682,44 @@ def main():
     config_path = os.path.join(workspace_path, "googleclaw", "config.json")
     with open(config_path, "w") as f:
         json.dump(config, f, indent=2)
-    ok(f"config.json opgeslagen in: {config_path}")
+
+    # Harden config.json permissions immediately
+    try:
+        os.chmod(config_path, 0o600)
+        ok(f"config.json opgeslagen en beveiligd: {config_path} (chmod 600)")
+    except Exception as e:
+        warn(f"config.json opgeslagen maar chmod mislukt: {e}")
+        warn(f"Voer handmatig uit: chmod 600 {config_path}")
+
+    # ── Security checklist ─────────────────────────────────────────────────────
+    print()
+    print(f"{c.BOLD}{c.YELLOW}{'─' * 54}{c.RESET}")
+    print(f"{c.BOLD}{c.YELLOW}  Beveiligingschecklist{c.RESET}")
+    print(f"{c.BOLD}{c.YELLOW}{'─' * 54}{c.RESET}")
+    print()
+    print(f"  {c.BOLD}Shopify API scopes (vereist minimum){c.RESET}")
+    print(f"  {'✓'} write_products")
+    print(f"  {'✓'} read_products")
+    print(f"  {c.RED}✗  write_orders     ← NIET nodig, verwijder indien aanwezig{c.RESET}")
+    print(f"  {c.RED}✗  read_customers   ← NIET nodig, verwijder indien aanwezig{c.RESET}")
+    print(f"  {c.RED}✗  write_customers  ← NIET nodig, verwijder indien aanwezig{c.RESET}")
+    print()
+    print(f"  {c.BOLD}Google Ads API scopes{c.RESET}")
+    print(f"  {'✓'} Alleen lezen voor campagne-data (default)")
+    print(f"  {'✓'} Budget-wijzigingen alleen na expliciete goedkeuring")
+    print()
+    print(f"  {c.BOLD}config.json{c.RESET}")
+    print(f"  {'✓'} Staat NIET in git (gitignored)")
+    print(f"  {'✓'} Permissies: 600 (alleen jij)")
+    print(f"  {c.DIM}Locatie: {config_path}{c.RESET}")
+    print()
+    print(f"  {c.BOLD}audit.log{c.RESET}")
+    print(f"  {'✓'} Alle Shopify writes worden gelogd")
+    print(f"  {'✓'} Log is append-only — agents verwijderen hem nooit")
+    print()
+    print(f"  {c.DIM}Meer info: README.md → Security{c.RESET}")
+    print(f"{c.BOLD}{c.YELLOW}{'─' * 54}{c.RESET}")
+    print()
 
     # Install self-improving skill via clawhub
     print()

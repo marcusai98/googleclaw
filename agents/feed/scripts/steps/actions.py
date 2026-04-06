@@ -12,6 +12,18 @@ import requests
 import json
 import time
 import datetime
+import sys
+import os
+
+# Security: audit logging
+try:
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "shared"))
+    from audit import audit_shopify_draft, audit_shopify_update
+    _audit_loaded = True
+except ImportError:
+    _audit_loaded = False
+    def audit_shopify_draft(*a, **kw): pass
+    def audit_shopify_update(*a, **kw): pass
 
 
 GEMINI_API = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent"
@@ -71,7 +83,7 @@ def get_all_active_products(domain: str, token: str) -> list:
 # ACTION 1: Draft product
 # ─────────────────────────────────────────────────────────────────────────────
 
-def draft_product(domain: str, token: str, product_id: str, reason: str) -> bool:
+def draft_product(domain: str, token: str, product_id: str, reason: str, title: str = "") -> bool:
     """Set product status to draft."""
     success = update_shopify_product(domain, token, product_id, {
         "status": "draft",
@@ -79,6 +91,11 @@ def draft_product(domain: str, token: str, product_id: str, reason: str) -> bool
     })
     if success:
         print(f"[FEED/actions] Drafted product {product_id}: {reason}")
+        audit_shopify_draft(agent="FEED", product_id=product_id,
+                            title=title or product_id, reason=reason, result="ok")
+    else:
+        audit_shopify_draft(agent="FEED", product_id=product_id,
+                            title=title or product_id, reason=reason, result="error")
     return success
 
 

@@ -14,10 +14,24 @@ Usage:
 import json
 import argparse
 import datetime
+import sys
+import os
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from methods import cj, amazon, competitors
+
+# Security utilities
+try:
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "shared"))
+    from sanitize import sanitize_batch, is_suspicious
+    from audit import audit_gads_read
+    _security_loaded = True
+except ImportError:
+    print("[SCOUT] ⚠  shared/sanitize not found — skipping sanitization")
+    _security_loaded = False
+    def sanitize_batch(products, agent=""): return products
+    def is_suspicious(text): return False
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -346,6 +360,10 @@ def main():
                 print(f"[SCOUT] {name} failed: {e}")
 
     print(f"[SCOUT] Total raw: {len(all_raw)} — merging...")
+
+    # Sanitize external data before any processing
+    all_raw = sanitize_batch(all_raw, agent="SCOUT")
+    print(f"[SCOUT] After sanitization: {len(all_raw)} products")
 
     # Merge + deduplicate
     merged = merge_candidates(all_raw)

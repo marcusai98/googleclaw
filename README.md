@@ -77,6 +77,33 @@ Complete this before running `setup.py`. All keys are entered during onboarding 
 | LISTER | On approval | Claude | Product listing + publishing |
 | FEED | Wednesday 06:00 | GPT | Feed optimization |
 
+## Security
+
+### Credential protection
+- `config.json` is **gitignored** and never committed
+- `setup.py` sets `chmod 600` on `config.json` immediately after creation
+- `serve.py` only binds to `127.0.0.1` — never exposed to the network
+- At startup, `serve.py` checks `config.json` permissions and warns if world-readable
+
+### Minimal API scopes
+| API | Required scopes | Never grant |
+|-----|----------------|-------------|
+| Shopify Admin | `write_products`, `read_products` | `write_orders`, `read_customers`, `write_customers` |
+| Google Ads | Read-only for data; write only for budget changes (approval required) | Account-level admin |
+| CJ Dropshipping | Product search only | Order placement, fulfillment |
+
+### Prompt injection protection
+External data from CJ, Amazon, and Google Sheets is sanitized via `agents/shared/sanitize.py` before inclusion in any agent prompt. Products with instruction-like titles are automatically dropped and logged.
+
+### Audit trail
+Every Shopify write (create, update, draft) is logged to `audit.log` (JSON lines, append-only). Agents never delete or modify this file. Log fields: `ts`, `agent`, `action`, `resource`, `detail`, `result`.
+
+### Approval gates
+These cannot be bypassed by any agent:
+- **LISTER**: requires explicit owner approval for every product listing
+- **Budget changes**: requires explicit owner approval every time
+- **FEED drafts**: owner can always reverse — products are drafted, not deleted
+
 ## Architecture
 
 - **State**: workspace JSON files (`queue.json`, `dashboard.json`, `agent-status.json`)

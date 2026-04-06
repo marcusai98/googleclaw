@@ -190,6 +190,17 @@ window.GC_BOOTSTRAP = {{
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
+def check_security():
+    """Warn about insecure config.json permissions."""
+    if not os.path.exists(CONFIG_PATH):
+        return
+    mode = oct(os.stat(CONFIG_PATH).st_mode)[-3:]
+    if mode not in ("600", "400"):
+        print(f"[serve] ⚠  WARNING: config.json has permissions {mode} — should be 600")
+        print(f"[serve]    Fix: chmod 600 {CONFIG_PATH}")
+    else:
+        print(f"[serve] ✓  config.json permissions: {mode}")
+
 def main():
     parser = argparse.ArgumentParser(description="GoogleClaw local server")
     parser.add_argument("--port",       type=int, default=8080)
@@ -204,8 +215,10 @@ def main():
         print(f"[serve] ✗  frontend/ directory not found at {FRONTEND_DIR}")
         sys.exit(1)
 
-    server = HTTPServer(("localhost", args.port), GCHandler)
-    url    = f"http://localhost:{args.port}/web.html"
+    check_security()
+
+    server = HTTPServer(("127.0.0.1", args.port), GCHandler)
+    url    = f"http://127.0.0.1:{args.port}/web.html"
 
     print()
     print(f"  ┌─────────────────────────────────────────┐")

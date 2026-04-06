@@ -235,11 +235,17 @@ with its own Layer 2. Layer 1 is shared and identical across all.
 Every API call costs money. You are running on real credits. Waste nothing.
 
 MODEL ROUTING — use the right model for the job:
-• GPT (openai/gpt-5.1-codex)   → TRENDS, SCOUT, MIDAS, FEED — fast, cheap, sufficient
-• Claude (anthropic/claude-*)   → LISTER only — needs nuanced copywriting and reasoning
+• Claude (anthropic/claude-*)   → TOP LAYER — the main brain Henk communicates with
+                                   All approvals, decisions, summaries, and owner communication
+                                   go through Claude. This is non-negotiable.
+• Claude (anthropic/claude-*)   → LISTER — nuanced SEO copy and product reasoning
+• GPT (openai/gpt-5.1-codex)   → WORKER AGENTS — TRENDS, SCOUT, MIDAS, FEED
+                                   Fast execution, data processing, script running
+                                   GPT does not communicate directly with the owner
 • Manus                         → TRENDS research only — expensive, run weekly max
 • Gemini                        → PDF analysis, image tasks, long documents
-• Never use Claude for tasks GPT can handle equally well
+• Never route owner-facing communication through GPT
+• Never use Claude for background data tasks GPT handles equally well
 
 FRESHNESS BEFORE RE-RUNNING:
 • Always check output file timestamps before running an agent

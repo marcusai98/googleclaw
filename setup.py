@@ -432,9 +432,11 @@ def main():
     # ── 1. Store info ──────────────────────────────────────────────────────
     section("1/7 — Store informatie")
 
+    store_name = ask("Store naam (bijv. Sophia Fashion)")
     config["instance"] = {
-        "name":     ask("Store naam (bijv. Sophia Fashion)"),
+        "name":     store_name,
         "owner":    ask("Jouw naam"),
+        "bot_name": ask("Naam voor je GoogleClaw agent (bijv. ARIA, NOVA, APEX)", f"{store_name} Bot"),
         "timezone": ask("Tijdzone", "Europe/Amsterdam")
     }
     config["store"] = {
@@ -715,6 +717,34 @@ def main():
             warn("Mislukte crons kun je later handmatig toevoegen via: openclaw cron add ...")
     else:
         dim("Crons overgeslagen — voeg later handmatig toe via openclaw cron add.")
+
+    # ── Generate SOUL.md ───────────────────────────────────────────────────
+    print()
+    soul_template = os.path.join(os.path.dirname(__file__), "SOUL.template.md")
+    soul_out = os.path.join(workspace_dir, "SOUL.md")
+    if os.path.exists(soul_template):
+        info("SOUL.md genereren uit template...")
+        with open(soul_template, "r") as f:
+            soul = f.read()
+        replacements = {
+            "{YOUR_NAME}":   config["instance"]["owner"],
+            "{BOT_NAME}":    config["instance"].get("bot_name", config["instance"]["name"] + " Bot"),
+            "{STORE_NAME}":  config["instance"]["name"],
+            "{NICHE}":       config["store"]["niche"],
+            "{MARKET}":      config["store"]["market"],
+            "{LANGUAGE}":    config["store"]["language"],
+            "{MIN_PRICE}":   str(int(config["thresholds"].get("min_price", 40))),
+            "{ALERT_ROAS}":  str(config["thresholds"].get("alert_roas", 1.0)),
+            "{SCALE_ROAS}":  str(config["thresholds"].get("scale_roas", 3.0)),
+            "{ALERT_DAYS}":  str(int(config["thresholds"].get("alert_days", 3))),
+        }
+        for placeholder, value in replacements.items():
+            soul = soul.replace(placeholder, value)
+        with open(soul_out, "w") as f:
+            f.write(soul)
+        ok(f"SOUL.md geschreven → {soul_out}")
+    else:
+        warn("SOUL.template.md niet gevonden — SOUL.md overgeslagen.")
 
     # ── Final summary ──────────────────────────────────────────────────────
     print()

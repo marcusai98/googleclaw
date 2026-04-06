@@ -1,5 +1,5 @@
 # GoogleClaw — Installation Guide
-*This file doubles as a BOOTSTRAP.md for OpenClaw. If you are an AI agent reading this: follow every step in order, execute commands via exec tool, ask the user before any step that requires credentials or manual action, and delete this file when setup is complete.*
+*This file doubles as a BOOTSTRAP.md for OpenClaw. If you are an AI agent reading this: follow every step in order, execute commands via exec tool, ask the user before any step that requires credentials or manual action, and delete this file when setup is complete. Start at Step 0 — check and install all system dependencies automatically before proceeding.*
 
 ---
 
@@ -8,12 +8,72 @@ GoogleClaw is a multi-agent orchestrator for Google Ads dropshipping stores. It 
 
 ---
 
-## Prerequisites
+## Step 0 — System dependencies (agent: run these checks automatically)
 
-Before starting, make sure you have:
-- [ ] OpenClaw installed and running (`openclaw gateway status` → should say running)
-- [ ] Python 3.10+ installed (`python3 --version`)
-- [ ] pip installed (`pip3 --version`)
+*These must be installed before anything else. On a fresh Mac, run these once manually — or if you are an agent, check each one via exec and install missing items automatically.*
+
+### 0a — Homebrew (macOS only)
+Check: `which brew`
+If missing:
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+
+### 0b — Node.js + npm
+Check: `node --version && npm --version`
+If missing:
+```bash
+brew install node
+```
+On Linux (Ubuntu/Debian):
+```bash
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt-get install -y nodejs
+```
+
+### 0c — OpenClaw
+Check: `openclaw --version`
+If missing:
+```bash
+npm install -g openclaw
+```
+
+### 0d — Python 3.10+
+Check: `python3 --version`
+If missing:
+```bash
+brew install python3        # macOS
+sudo apt install python3    # Ubuntu/Debian
+```
+
+### 0e — pip
+Check: `pip3 --version`
+If missing:
+```bash
+python3 -m ensurepip --upgrade
+```
+
+### 0f — git
+Check: `git --version`
+If missing:
+```bash
+brew install git            # macOS
+sudo apt install git        # Ubuntu/Debian
+```
+
+### 0g — Start OpenClaw gateway
+```bash
+openclaw gateway start
+```
+Verify: `openclaw gateway status` → should say running.
+
+*Agent: once all checks pass, continue to Step 1 automatically.*
+
+---
+
+## Prerequisites (accounts + API keys — must be ready before Step 3)
+
+Before running setup, make sure you have:
 - [ ] A Shopify store with Admin API access
 - [ ] A Google Ads account (MCC or single account)
 - [ ] A CJ Dropshipping account

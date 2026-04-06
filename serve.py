@@ -443,8 +443,9 @@ def main():
 
     check_security()
 
-    server = HTTPServer(("127.0.0.1", args.port), GCHandler)
-    url    = f"http://127.0.0.1:{args.port}/web.html"
+    bind   = os.environ.get("GC_HOST", "127.0.0.1")
+    server = HTTPServer((bind, args.port), GCHandler)
+    url    = f"http://{bind}:{args.port}/web.html"
 
     print()
     print(f"  ┌─────────────────────────────────────────┐")

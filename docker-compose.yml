@@ -7,18 +7,19 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - googleclaw_data:/app/data
+      - googleclaw_data:/data
     restart: unless-stopped
     environment:
       - GC_HOST=0.0.0.0
     command: >
       sh -c "
         apt-get update -qq &&
-        apt-get install -y -qq git bash &&
+        apt-get install -y -qq git &&
         git clone https://github.com/marcusai98/googleclaw /tmp/gc &&
-        cp -r /tmp/gc/. /app/ &&
-        pip install -q --no-cache-dir -r /app/requirements.txt &&
-        cd /app &&
+        mkdir -p /data &&
+        ln -sf /data/config.json /tmp/gc/config.json &&
+        pip install -q --no-cache-dir -r /tmp/gc/requirements.txt &&
+        cd /tmp/gc &&
         python3 serve.py --no-browser --port 8080
       "
 

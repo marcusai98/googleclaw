@@ -256,22 +256,27 @@ window.GC_BOOTSTRAP = {{
     def _setup_test_shopify(self):
         length = int(self.headers.get("Content-Length", 0))
         body   = json.loads(self.rfile.read(length))
-        domain   = body.get("storeDomain", "").strip().rstrip("/")
-        cid      = body.get("clientId", "").strip()
-        csecret  = body.get("clientSecret", "").strip()
+        domain      = body.get("storeDomain", "").strip().rstrip("/")
+        cid         = body.get("clientId", "").strip()
+        csecret     = body.get("clientSecret", "").strip()
+        static_tok  = body.get("staticToken", "").strip()
         try:
             from urllib.request import Request as UReq, urlopen as uopen
-            import urllib.parse
-            payload = json.dumps({
-                "client_id": cid, "client_secret": csecret,
-                "grant_type": "client_credentials"
-            }).encode()
-            req = UReq(f"https://{domain}/admin/oauth/access_token",
-                       data=payload, headers={"Content-Type": "application/json"}, method="POST")
-            with uopen(req, timeout=10) as r:
-                token = json.loads(r.read()).get("access_token", "")
-            if not token:
-                raise ValueError("No token received — check Client ID and Secret")
+            # Static token path (legacy custom app)
+            if static_tok:
+                token = static_tok
+            else:
+                # Client credentials grant (new app via Partners portal)
+                payload = json.dumps({
+                    "client_id": cid, "client_secret": csecret,
+                    "grant_type": "client_credentials"
+                }).encode()
+                req = UReq(f"https://{domain}/admin/oauth/access_token",
+                           data=payload, headers={"Content-Type": "application/json"}, method="POST")
+                with uopen(req, timeout=10) as r:
+                    token = json.loads(r.read()).get("access_token", "")
+                if not token:
+                    raise ValueError("No token received — check Client ID and Secret")
             req2 = UReq(f"https://{domain}/admin/api/2024-01/shop.json",
                         headers={"X-Shopify-Access-Token": token})
             with uopen(req2, timeout=8) as r:
@@ -306,6 +311,7 @@ window.GC_BOOTSTRAP = {{
                 },
                 "shopify": {
                     "storeDomain":  data.get("storeDomain", ""),
+                    "accessToken":  data.get("shopifyStaticToken", ""),   # legacy
                     "clientId":     data.get("shopifyClientId", ""),
                     "clientSecret": data.get("shopifyClientSecret", ""),
                 },

@@ -535,8 +535,9 @@
                 </div>
 
                 <div class="info-box">
-                    Since January 2026, new Shopify apps must use the <strong>Dev Dashboard</strong> — not the Admin panel. Static tokens no longer work for new apps. Tokens are valid 24h and auto-refreshed by GoogleClaw.<br><br>
-<strong>Steps:</strong> Go to <a href="https://partners.shopify.com" target="_blank" style="color:#FD6737">partners.shopify.com</a> → Apps → Create app → Custom app → Settings → paste your Client ID and Client Secret below. Required scopes: <code>write_products</code> + <code>read_products</code>.
+                    <strong>Two options depending on when your app was created:</strong><br><br>
+                    <strong>Option A — Existing custom app (before Jan 2026):</strong> You have a static access token. Go to your Shopify Admin → Settings → Apps → your custom app → API credentials → copy the access token. Paste it in the "Static Token" field below.<br><br>
+                    <strong>Option B — New app (Jan 2026+):</strong> Static tokens are no longer available. Create a free account at <a href="https://partners.shopify.com" target="_blank" style="color:#FD6737">partners.shopify.com</a> → Apps → Create app → select your store → Settings → copy Client ID and Client Secret. Required scopes: <code>write_products</code> + <code>read_products</code>.
                 </div>
 
                 <div class="form-group">
@@ -544,16 +545,31 @@
                     <input type="text" name="shopify_domain" placeholder="your-store.myshopify.com">
                 </div>
 
-                <div class="form-group">
-                    <label>Client ID</label>
-                    <input type="text" name="shopify_client_id">
+                <div style="margin: 16px 0; padding: 12px; background: #0a1628; border-radius: 8px;">
+                    <p style="color: #636D8B; font-size: 13px; margin-bottom: 12px;">Option A — Static token (legacy custom app)</p>
+                    <div class="form-group" style="margin:0">
+                        <label>Static Access Token</label>
+                        <div class="input-wrapper">
+                            <input type="password" name="shopify_static_token" class="password-field" placeholder="shpat_...">
+                            <button type="button" class="toggle-password" onclick="togglePassword(this)">Show</button>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="form-group">
-                    <label>Client Secret</label>
-                    <div class="input-wrapper">
-                        <input type="password" name="shopify_client_secret" class="password-field">
-                        <button type="button" class="toggle-password" onclick="togglePassword(this)">Show</button>
+                <div style="text-align:center; color: #636D8B; font-size: 13px; margin: 8px 0;">— or —</div>
+
+                <div style="margin: 16px 0; padding: 12px; background: #0a1628; border-radius: 8px;">
+                    <p style="color: #636D8B; font-size: 13px; margin-bottom: 12px;">Option B — Client ID + Secret (new app via Partners portal)</p>
+                    <div class="form-group">
+                        <label>Client ID</label>
+                        <input type="text" name="shopify_client_id">
+                    </div>
+                    <div class="form-group" style="margin:0">
+                        <label>Client Secret</label>
+                        <div class="input-wrapper">
+                            <input type="password" name="shopify_client_secret" class="password-field">
+                            <button type="button" class="toggle-password" onclick="togglePassword(this)">Show</button>
+                        </div>
                     </div>
                 </div>
 

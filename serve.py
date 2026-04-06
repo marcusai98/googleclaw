@@ -71,6 +71,10 @@ class GCHandler(SimpleHTTPRequestHandler):
         elif self.path == "/setup":
             self.path = "/setup.html"
             super().do_GET()
+        elif self.path.startswith("/setup/google-auth/callback"):
+            self._google_auth_callback()
+        elif self.path == "/setup/google-auth/status":
+            self._google_auth_status()
         else:
             super().do_GET()
 
@@ -83,6 +87,8 @@ class GCHandler(SimpleHTTPRequestHandler):
             self._setup_save()
         elif self.path == "/setup/test-shopify":
             self._setup_test_shopify()
+        elif self.path == "/setup/google-auth/start":
+            self._google_auth_start()
         else:
             self.send_response(404)
             self.end_headers()
@@ -251,6 +257,149 @@ window.GC_BOOTSTRAP = {{
             self.wfile.write(body)
         except Exception as e:
             self._json_error(500, str(e))
+
+    # ── Google OAuth state (in-memory, per server process) ───────────────
+    _google_oauth_state: dict = {}   # class-level shared state
+
+    # ── /setup/google-auth/start ──────────────────────────────────────────
+    def _google_auth_start(self):
+        length = int(self.headers.get("Content-Length", 0))
+        body   = json.loads(self.rfile.read(length))
+        cid      = body.get("clientId", "").strip()
+        csecret  = body.get("clientSecret", "").strip()
+        dev_tok  = body.get("developerToken", "").strip()
+        port     = self.server.server_address[1]
+        redirect = f"http://localhost:{port}/setup/google-auth/callback"
+
+        import urllib.parse, secrets
+        state = secrets.token_hex(8)
+        GCHandler._google_oauth_state = {
+            "state": state, "clientId": cid,
+            "clientSecret": csecret, "developerToken": dev_tok,
+            "redirect": redirect, "status": "pending"
+        }
+        params = urllib.parse.urlencode({
+            "client_id": cid,
+            "redirect_uri": redirect,
+            "response_type": "code",
+            "scope": "https://www.googleapis.com/auth/adwords",
+            "access_type": "offline",
+            "prompt": "consent",
+            "state": state,
+        })
+        auth_url = f"https://accounts.google.com/o/oauth2/v2/auth?{params}"
+        resp = json.dumps({"ok": True, "authUrl": auth_url}).encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(resp)))
+        self.send_cors()
+        self.end_headers()
+        self.wfile.write(resp)
+
+    # ── /setup/google-auth/callback ───────────────────────────────────────
+    def _google_auth_callback(self):
+        from urllib.parse import urlparse, parse_qs
+        from urllib.request import Request as UReq, urlopen as uopen
+        qs    = parse_qs(urlparse(self.path).query)
+        code  = qs.get("code", [""])[0]
+        state = qs.get("state", [""])[0]
+        st    = GCHandler._google_oauth_state
+
+        if not code or state != st.get("state", ""):
+            html = b"<h2>Error: invalid state or missing code. Close this tab and try again.</h2>"
+            self.send_response(400)
+            self.send_header("Content-Type", "text/html")
+            self.send_header("Content-Length", str(len(html)))
+            self.end_headers()
+            self.wfile.write(html)
+            return
+
+        try:
+            # Exchange code for tokens
+            payload = json.dumps({
+                "code": code, "client_id": st["clientId"],
+                "client_secret": st["clientSecret"],
+                "redirect_uri": st["redirect"],
+                "grant_type": "authorization_code",
+            }).encode()
+            req = UReq("https://oauth2.googleapis.com/token",
+                       data=payload, headers={"Content-Type": "application/json"}, method="POST")
+            with uopen(req, timeout=10) as r:
+                tokens = json.loads(r.read())
+
+            refresh_token = tokens.get("refresh_token", "")
+            access_token  = tokens.get("access_token", "")
+
+            # Get accessible customer IDs
+            req2 = UReq(
+                "https://googleads.googleapis.com/v18/customers:listAccessibleCustomers",
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    "developer-token": st["developerToken"],
+                }
+            )
+            customer_ids = []
+            try:
+                with uopen(req2, timeout=8) as r:
+                    data = json.loads(r.read())
+                    # resourceNames like "customers/1234567890"
+                    customer_ids = [
+                        rn.split("/")[-1]
+                        for rn in data.get("resourceNames", [])
+                    ]
+            except Exception:
+                pass
+
+            GCHandler._google_oauth_state.update({
+                "status": "done",
+                "refreshToken": refresh_token,
+                "customerIds": customer_ids,
+            })
+
+            # Close tab and notify opener
+            html = b"""<!DOCTYPE html>
+<html><head><title>GoogleClaw — Google Connected</title>
+<style>body{font-family:sans-serif;background:#040B1B;color:#D3D8F2;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;}</style>
+</head><body>
+<div style="text-align:center">
+  <div style="font-size:48px;margin-bottom:16px">&#10003;</div>
+  <h2>Google Ads connected!</h2>
+  <p>You can close this tab and return to the setup wizard.</p>
+</div>
+<script>
+  if(window.opener){ window.opener.postMessage({type:'google-auth-done'},'*'); }
+  setTimeout(()=>window.close(),2000);
+</script>
+</body></html>"""
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html")
+            self.send_header("Content-Length", str(len(html)))
+            self.end_headers()
+            self.wfile.write(html)
+
+        except Exception as e:
+            GCHandler._google_oauth_state["status"] = f"error: {e}"
+            html = f"<h2>Auth error: {e}</h2>".encode()
+            self.send_response(500)
+            self.send_header("Content-Type", "text/html")
+            self.send_header("Content-Length", str(len(html)))
+            self.end_headers()
+            self.wfile.write(html)
+
+    # ── /setup/google-auth/status ─────────────────────────────────────────
+    def _google_auth_status(self):
+        st   = GCHandler._google_oauth_state
+        resp = json.dumps({
+            "status":       st.get("status", "pending"),
+            "customerIds":  st.get("customerIds", []),
+            "refreshToken": st.get("refreshToken", ""),
+        }).encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(resp)))
+        self.send_cors()
+        self.end_headers()
+        self.wfile.write(resp)
 
     # ── /setup/test-shopify ───────────────────────────────────────────────
     def _setup_test_shopify(self):

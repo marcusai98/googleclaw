@@ -596,43 +596,54 @@
                     <p>Connect your Google Ads account</p>
                 </div>
 
-                <div class="form-group">
-                    <label>Customer ID</label>
-                    <input type="text" name="google_ads_customer_id" placeholder="123-456-7890">
+                <div class="info-box">
+                    <strong>Two things needed before connecting:</strong><br><br>
+                    <strong>1. Developer Token</strong> — Google Ads → Admin (gear icon) → API Center → copy your Developer Token.<br><br>
+                    <strong>2. Google Cloud OAuth credentials</strong> — <a href="https://console.cloud.google.com" target="_blank" style="color:#FD6737">console.cloud.google.com</a> → New project → Enable Google Ads API → Credentials → Create OAuth 2.0 Client ID (type: Web application) → add Authorized redirect URI: <code id="oauthRedirectUri">http://localhost:8080/setup/google-auth/callback</code> → copy Client ID + Client Secret.
                 </div>
 
                 <div class="form-group">
                     <label>Developer Token</label>
                     <div class="input-wrapper">
-                        <input type="password" name="google_ads_developer_token" class="password-field">
+                        <input type="password" id="gads_dev_token" name="google_ads_developer_token" class="password-field" placeholder="From Google Ads → API Center">
                         <button type="button" class="toggle-password" onclick="togglePassword(this)">Show</button>
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <label>OAuth Client ID</label>
-                    <input type="text" name="google_ads_oauth_client_id">
+                    <label>Google Cloud Client ID</label>
+                    <input type="text" id="gads_client_id" name="google_ads_oauth_client_id" placeholder="xxxx.apps.googleusercontent.com">
                 </div>
 
                 <div class="form-group">
-                    <label>OAuth Client Secret</label>
+                    <label>Google Cloud Client Secret</label>
                     <div class="input-wrapper">
-                        <input type="password" name="google_ads_oauth_client_secret" class="password-field">
+                        <input type="password" id="gads_client_secret" name="google_ads_oauth_client_secret" class="password-field">
                         <button type="button" class="toggle-password" onclick="togglePassword(this)">Show</button>
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label>Refresh Token</label>
-                    <div class="input-wrapper">
-                        <input type="password" name="google_ads_refresh_token" class="password-field">
-                        <button type="button" class="toggle-password" onclick="togglePassword(this)">Show</button>
+                <button type="button" class="btn btn-test" id="googleConnectBtn" onclick="connectGoogle()" style="width:100%;margin-bottom:12px">
+                    Connect with Google
+                </button>
+
+                <div id="googleAuthStatus" style="display:none;padding:12px;border-radius:8px;margin-bottom:12px;text-align:center"></div>
+
+                <!-- Hidden fields populated after OAuth -->
+                <input type="hidden" name="google_ads_refresh_token" id="gads_refresh_token">
+                <input type="hidden" name="google_ads_customer_id" id="gads_customer_id">
+
+                <div id="googleCustomerSelect" style="display:none">
+                    <div class="form-group">
+                        <label>Select Google Ads Account</label>
+                        <select name="google_ads_customer_id_select" id="gads_customer_select" onchange="document.getElementById('gads_customer_id').value=this.value" style="width:100%;padding:10px;background:#0D1626;border:1px solid #1e2d45;color:#D3D8F2;border-radius:6px">
+                        </select>
                     </div>
                 </div>
 
                 <div class="button-group">
                     <button type="button" class="btn btn-secondary" onclick="prevStep()">Back</button>
-                    <button type="button" class="btn btn-primary" onclick="nextStep()">Next</button>
+                    <button type="button" class="btn btn-primary" id="gadsNextBtn" onclick="nextStep()">Next</button>
                 </div>
             </div>
 
@@ -1048,6 +1059,109 @@
                 btn.innerHTML = 'Complete Setup';
                 errorDiv.innerHTML = `<div class="error-message">${error.message}</div>`;
             }
+        }
+
+        // ── Google OAuth flow ──────────────────────────────────────────────
+        // Set redirect URI hint in info box
+        document.addEventListener('DOMContentLoaded', () => {
+            const uri = document.getElementById('oauthRedirectUri');
+            if (uri) uri.textContent = window.location.origin + '/setup/google-auth/callback';
+        });
+
+        let googlePollTimer = null;
+
+        async function connectGoogle() {
+            const devToken   = document.getElementById('gads_dev_token').value.trim();
+            const clientId   = document.getElementById('gads_client_id').value.trim();
+            const clientSec  = document.getElementById('gads_client_secret').value.trim();
+            if (!devToken || !clientId || !clientSec) {
+                alert('Fill in Developer Token, Client ID and Client Secret first.');
+                return;
+            }
+            const btn    = document.getElementById('googleConnectBtn');
+            const status = document.getElementById('googleAuthStatus');
+            btn.disabled = true;
+            btn.textContent = 'Opening Google login...';
+            status.style.display = 'none';
+
+            try {
+                const r = await fetch('/setup/google-auth/start', {
+                    method: 'POST',
+                    headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({clientId, clientSecret: clientSec, developerToken: devToken})
+                });
+                const d = await r.json();
+                if (!d.ok || !d.authUrl) throw new Error(d.error || 'Failed to start auth');
+
+                const popup = window.open(d.authUrl, 'google_auth', 'width=500,height=650');
+                status.style.display = 'block';
+                status.style.background = '#0D1626';
+                status.style.color = '#636D8B';
+                status.textContent = 'Waiting for Google login...';
+
+                // Listen for postMessage from callback page
+                window.addEventListener('message', function handler(e) {
+                    if (e.data && e.data.type === 'google-auth-done') {
+                        window.removeEventListener('message', handler);
+                        clearInterval(googlePollTimer);
+                        pollGoogleStatus();
+                    }
+                });
+                // Also poll as fallback
+                googlePollTimer = setInterval(pollGoogleStatus, 2000);
+
+            } catch(e) {
+                btn.disabled = false;
+                btn.textContent = 'Connect with Google';
+                status.style.display = 'block';
+                status.style.background = '#2a0a0a';
+                status.style.color = '#ff6b6b';
+                status.textContent = 'Error: ' + e.message;
+            }
+        }
+
+        async function pollGoogleStatus() {
+            const status = document.getElementById('googleAuthStatus');
+            const btn    = document.getElementById('googleConnectBtn');
+            try {
+                const r = await fetch('/setup/google-auth/status');
+                const d = await r.json();
+                if (d.status === 'done') {
+                    clearInterval(googlePollTimer);
+                    // Save to hidden fields + formData
+                    document.getElementById('gads_refresh_token').value = d.refreshToken;
+                    formData.google_ads_refresh_token = d.refreshToken;
+
+                    // Populate customer select
+                    const sel = document.getElementById('gads_customer_select');
+                    const container = document.getElementById('googleCustomerSelect');
+                    sel.innerHTML = '';
+                    if (d.customerIds && d.customerIds.length > 0) {
+                        d.customerIds.forEach(id => {
+                            const opt = document.createElement('option');
+                            opt.value = id;
+                            opt.textContent = id;
+                            sel.appendChild(opt);
+                        });
+                        document.getElementById('gads_customer_id').value = d.customerIds[0];
+                        formData.google_ads_customer_id = d.customerIds[0];
+                        container.style.display = 'block';
+                    }
+
+                    status.style.background = '#0a2a0a';
+                    status.style.color = '#4caf50';
+                    status.textContent = '✓ Google Ads connected!';
+                    btn.textContent = '✓ Connected';
+                    btn.style.background = '#4caf50';
+                } else if (d.status && d.status.startsWith('error')) {
+                    clearInterval(googlePollTimer);
+                    status.style.background = '#2a0a0a';
+                    status.style.color = '#ff6b6b';
+                    status.textContent = d.status;
+                    btn.disabled = false;
+                    btn.textContent = 'Try Again';
+                }
+            } catch(e) { /* silently retry */ }
         }
 
         // Initialize

@@ -359,48 +359,61 @@ CRONS = [
         "name":     "googleclaw-trends",
         "schedule": "0 23 * * 0",
         "label":    "TRENDS — wekelijks zondag 23:00",
-        "task":     "Run GoogleClaw TRENDS agent. Read agents/trends/prompt.md and agents/trends/state.md for full context. Execute the TRENDS pipeline."
+        "model":    "openai/gpt-5.1-codex",
+        "timeout":  600,
     },
     {
         "id":       "midas",
         "name":     "googleclaw-midas",
         "schedule": "0 7 * * *",
         "label":    "MIDAS — dagelijks 07:00",
-        "task":     "Run GoogleClaw MIDAS agent. Read agents/midas/prompt.md and agents/midas/state.md for full context. Execute the MIDAS performance pipeline."
+        "model":    "openai/gpt-5.1-codex",
+        "timeout":  600,
     },
     {
         "id":       "scout",
         "name":     "googleclaw-scout",
         "schedule": "0 6 * * *",
         "label":    "SCOUT — dagelijks 06:00",
-        "task":     "Run GoogleClaw SCOUT agent. Read agents/scout/prompt.md and agents/scout/state.md for full context. Execute the SCOUT product discovery pipeline."
+        "model":    "openai/gpt-5.1-codex",
+        "timeout":  900,
     },
     {
         "id":       "feed",
         "name":     "googleclaw-feed",
         "schedule": "0 6 * * 3",
         "label":    "FEED — woensdags 06:00",
-        "task":     "Run GoogleClaw FEED agent. Read agents/feed/prompt.md and agents/feed/state.md for full context. Execute the FEED optimization pipeline."
+        "model":    "openai/gpt-5.1-codex",
+        "timeout":  600,
     },
-    {
-        "id":       "trends-seasonal",
-        "name":     "googleclaw-trends-seasonal",
-        "schedule": "0 3 1 * *",
-        "label":    "TRENDS seasonal synthesis — 1e van de maand 03:00",
-        "task":     "Run GoogleClaw TRENDS seasonal synthesize. Read agents/trends/prompt.md for context. Execute synthesize.py to update seasonal-patterns.json."
-    }
 ]
 
-def register_crons(crons_to_register):
+def load_prompt(agent_name, repo_path):
+    """Load PROMPT.md for an agent and fill in {{REPO_PATH}}."""
+    prompt_path = os.path.join(os.path.dirname(__file__), "agents", agent_name, "PROMPT.md")
+    if not os.path.exists(prompt_path):
+        return f"Run GoogleClaw {agent_name.upper()} agent. Repo: {repo_path}"
+    with open(prompt_path) as f:
+        return f.read().replace("{{REPO_PATH}}", repo_path)
+
+
+def register_crons(crons_to_register, repo_path, timezone):
     registered = []
     failed = []
     for cron in crons_to_register:
+        prompt = load_prompt(cron["id"], repo_path)
+        model  = cron.get("model", "openai/gpt-5.1-codex")
         try:
             result = subprocess.run(
                 ["openclaw", "cron", "add",
-                 "--name",     cron["name"],
-                 "--schedule", cron["schedule"],
-                 "--task",     cron["task"]],
+                 "--name",            cron["name"],
+                 "--cron",            cron["schedule"],
+                 "--tz",              timezone,
+                 "--message",         prompt,
+                 "--session",         "isolated",
+                 "--model",           model,
+                 "--timeout-seconds", str(cron.get("timeout", 600)),
+                 "--description",     cron["label"]],
                 capture_output=True, text=True, timeout=15
             )
             if result.returncode == 0:
@@ -744,12 +757,44 @@ def main():
     else:
         dim("Self-Improving skill overgeslagen — agents gebruiken alleen de lokale memory-bestanden in workspace.")
 
-    # Register crons
+    # ── Gateway config: allow sessions_spawn over HTTP ────────────────────
     print()
-    register_crons_choice = ask_bool("OpenClaw crons registreren (TRENDS, MIDAS, SCOUT, FEED, seasonal)")
+    print(f"{c.BOLD}{c.YELLOW}{'─' * 54}{c.RESET}")
+    print(f"{c.BOLD}{c.YELLOW}  Gateway configuratie{c.RESET}")
+    print(f"{c.BOLD}{c.YELLOW}{'─' * 54}{c.RESET}")
+    print()
+    print(f"  GoogleClaw triggert agents via je OpenClaw gateway.")
+    print(f"  Daarvoor moet {c.BOLD}sessions_spawn{c.RESET} toegestaan zijn over HTTP.")
+    print()
+    print(f"  Voeg dit toe aan je {c.CYAN}openclaw.json{c.RESET}:")
+    print()
+    print(f"  {c.DIM}{{")
+    print(f'    "gateway": {{')
+    print(f'      "tools": {{')
+    print(f'        "allow": ["sessions_spawn"]')
+    print(f'      }}')
+    print(f'    }}')
+    print(f"  }}{c.RESET}")
+    print()
+
+    # Write snippet to file for reference
+    snippet_path = os.path.join(workspace_path, "googleclaw", "gateway-config-snippet.json")
+    with open(snippet_path, "w") as f:
+        json.dump({"gateway": {"tools": {"allow": ["sessions_spawn"]}}}, f, indent=2)
+    dim(f"Snippet opgeslagen in: {snippet_path}")
+    print()
+    ask_bool("Voeg dit nu toe aan openclaw.json en herstart de gateway. Klaar?")
+    print(f"  {c.BOLD}{c.GREEN}✓{c.RESET}  Gateway configuratie bevestigd")
+    print(f"{c.BOLD}{c.YELLOW}{'─' * 54}{c.RESET}")
+
+    # ── Register crons ────────────────────────────────────────────────────
+    print()
+    repo_path = os.path.dirname(os.path.abspath(__file__))
+    timezone  = config.get("instance", {}).get("timezone", "Europe/Amsterdam")
+    register_crons_choice = ask_bool("OpenClaw crons registreren (TRENDS, MIDAS, SCOUT, FEED)")
     if register_crons_choice:
         info("Crons registreren via openclaw CLI...")
-        registered, failed = register_crons(CRONS)
+        registered, failed = register_crons(CRONS, repo_path=repo_path, timezone=timezone)
         for r in registered:
             ok(r)
         for label, reason in failed:
@@ -786,6 +831,119 @@ def main():
         ok(f"SOUL.md geschreven → {soul_out}")
     else:
         warn("SOUL.template.md niet gevonden — SOUL.md overgeslagen.")
+
+    # ── Gateway config for sessions_spawn ──────────────────────────────────
+    section("OpenClaw Gateway configuratie")
+
+    print(f"  {c.DIM}De frontend triggert agents via sessions_spawn.{c.RESET}")
+    print(f"  {c.DIM}Dit moet expliciet toegestaan worden in je OpenClaw gateway config.{c.RESET}")
+    print()
+    print(f"  {c.YELLOW}Voeg dit toe aan je openclaw.json (of .openclaw/config.json):{c.RESET}")
+    print()
+    print(f'    {c.CYAN}{{"gateway": {{"tools": {{"allow": ["sessions_spawn"]}}}}}}{c.RESET}')
+    print()
+
+    # Write snippet to workspace for reference
+    gateway_snippet = {
+        "gateway": {
+            "tools": {
+                "allow": ["sessions_spawn"]
+            }
+        }
+    }
+    snippet_path = os.path.join(workspace_path, "googleclaw", "gateway-config-snippet.json")
+    try:
+        with open(snippet_path, "w") as f:
+            json.dump(gateway_snippet, f, indent=2)
+        dim(f"Snippet opgeslagen: {snippet_path}")
+    except Exception as e:
+        warn(f"Kon snippet niet opslaan: {e}")
+
+    gateway_confirmed = ask_bool("Heb je de gateway config aangepast? (druk Y als gedaan)")
+    if gateway_confirmed:
+        ok("Gateway config bevestigd")
+    else:
+        warn("Vergeet niet de gateway config aan te passen voordat je agents vanuit de frontend triggert!")
+
+    # ── OpenClaw crons for agents ──────────────────────────────────────────
+    print()
+    section("OpenClaw crons voor automatische runs")
+
+    print(f"  {c.DIM}GoogleClaw agents kunnen automatisch draaien via OpenClaw crons.{c.RESET}")
+    print(f"  {c.DIM}TRENDS draait wekelijks (zondag 23:00), SCOUT dagelijks (06:00).{c.RESET}")
+    print()
+
+    register_agent_crons = ask_bool("OpenClaw crons aanmaken voor automatische runs? (aanbevolen)")
+    if register_agent_crons:
+        timezone = config["instance"].get("timezone", "Europe/Amsterdam")
+        gc_workspace = os.path.join(workspace_path, "googleclaw")
+
+        # Read PROMPT.md files and fill {{REPO_PATH}}
+        def load_prompt(agent_name):
+            prompt_path = os.path.join(os.path.dirname(__file__), "agents", agent_name, "PROMPT.md")
+            if os.path.exists(prompt_path):
+                with open(prompt_path, "r") as f:
+                    content = f.read()
+                return content.replace("{{REPO_PATH}}", gc_workspace)
+            return None
+
+        cron_jobs = [
+            {
+                "name":        "gc-trends",
+                "cron":        "0 23 * * 0",
+                "model":       "openai/gpt-5.1-codex",
+                "timeout":     600,
+                "description": "GoogleClaw TRENDS — wekelijks zondag 23:00",
+                "prompt":      load_prompt("trends"),
+            },
+            {
+                "name":        "gc-scout",
+                "cron":        "0 6 * * *",
+                "model":       "openai/gpt-5.1-codex",
+                "timeout":     900,
+                "description": "GoogleClaw SCOUT — dagelijks 06:00",
+                "prompt":      load_prompt("scout"),
+            },
+        ]
+
+        for job in cron_jobs:
+            if not job["prompt"]:
+                warn(f"{job['name']}: PROMPT.md niet gevonden — overgeslagen")
+                continue
+
+            try:
+                # Escape quotes in prompt for shell
+                escaped_prompt = job["prompt"].replace('"', '\\"').replace("'", "'\\''")
+
+                result = subprocess.run(
+                    [
+                        "openclaw", "cron", "add",
+                        "--name", job["name"],
+                        "--cron", job["cron"],
+                        "--tz", timezone,
+                        "--message", job["prompt"],
+                        "--session", "isolated",
+                        "--model", job["model"],
+                        "--timeout-seconds", str(job["timeout"]),
+                        "--description", job["description"],
+                    ],
+                    capture_output=True, text=True, timeout=30
+                )
+                if result.returncode == 0:
+                    ok(f"{job['name']}: cron geregistreerd ({job['cron']})")
+                else:
+                    error_msg = result.stderr.strip() or result.stdout.strip() or "onbekende fout"
+                    warn(f"{job['name']}: registratie mislukt — {error_msg}")
+            except FileNotFoundError:
+                warn(f"openclaw CLI niet gevonden — crons handmatig toevoegen")
+                dim(f"Voer uit: openclaw cron add --name {job['name']} --cron \"{job['cron']}\" ...")
+                break
+            except subprocess.TimeoutExpired:
+                warn(f"{job['name']}: timeout bij registratie")
+            except Exception as e:
+                warn(f"{job['name']}: {e}")
+    else:
+        dim("Crons overgeslagen — agents draaien alleen handmatig vanuit de frontend.")
 
     # ── Final summary ──────────────────────────────────────────────────────
     print()

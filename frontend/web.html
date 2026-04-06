@@ -230,6 +230,13 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:'Inter',s
 /* ── AGENTS ── */
 .agents-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;}
 .agent-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;align-items:center;gap:13px;}
+.ag-run-btn{padding:6px 12px;border-radius:8px;background:var(--green);border:none;color:#080C09;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;margin-top:6px;}
+.ag-run-btn:hover{opacity:.85;}
+.ag-run-btn:disabled{opacity:.5;cursor:not-allowed;}
+.ag-run-btn.running{background:var(--yellow);animation:pulse 1s infinite;}
+.ag-run-btn.success{background:var(--green);}
+.ag-run-btn.error{background:var(--red);}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
 .ag-ico{width:44px;height:44px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
 .ag-body{flex:1;min-width:0;}
 .ag-name{font-size:14px;font-weight:900;}
@@ -590,22 +597,14 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:'Inter',s
     <div class="scroll" style="flex:1">
       <div class="agents-grid" style="margin-bottom:14px">
         <div class="agent-card">
-          <div class="ag-ico" style="background:var(--y2)">🧠</div>
+          <div class="ag-ico" style="background:var(--p2)">🧠</div>
           <div class="ag-body">
-            <div class="ag-name">HERALD</div>
-            <div class="ag-status"><span class="dot" style="background:var(--green)"></span> Active · Performance monitor</div>
-            <div class="ag-last">Last: flagged Silicone Earplugs 0.82x ROAS</div>
+            <div class="ag-name">TRENDS</div>
+            <div class="ag-status"><span class="dot" style="background:var(--green)"></span> Active · Trend research via Manus</div>
+            <div class="ag-last">Last: 8 validated product types</div>
+            <button class="ag-run-btn" id="run-trends" onclick="runAgent('trends','openai/gpt-5.1-codex')">▶ Run now</button>
           </div>
-          <div class="ag-right"><div class="ag-stat" style="color:var(--yellow)">2</div><div class="ag-stat-l">alerts</div></div>
-        </div>
-        <div class="agent-card">
-          <div class="ag-ico" style="background:var(--y2)">💰</div>
-          <div class="ag-body">
-            <div class="ag-name">MIDAS</div>
-            <div class="ag-status"><span class="dot" style="background:var(--green)"></span> Active · Finance & P&L</div>
-            <div class="ag-last">Last: P&L updated · profit €381</div>
-          </div>
-          <div class="ag-right"><div class="ag-stat" style="color:var(--green)">€381</div><div class="ag-stat-l">profit</div></div>
+          <div class="ag-right"><div class="ag-stat" style="color:var(--purple)">8</div><div class="ag-stat-l">trends</div></div>
         </div>
         <div class="agent-card">
           <div class="ag-ico" style="background:var(--g2)">🔍</div>
@@ -613,6 +612,7 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:'Inter',s
             <div class="ag-name">SCOUT</div>
             <div class="ag-status"><span class="dot" style="background:var(--green)"></span> Active · Product research</div>
             <div class="ag-last">Last: found 10 products at 06:00</div>
+            <button class="ag-run-btn" id="run-scout" onclick="runAgent('scout','openai/gpt-5.1-codex')">▶ Run now</button>
           </div>
           <div class="ag-right"><div class="ag-stat" style="color:var(--yellow)">7</div><div class="ag-stat-l">pending</div></div>
         </div>
@@ -620,10 +620,31 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:'Inter',s
           <div class="ag-ico" style="background:var(--g2)">🏪</div>
           <div class="ag-body">
             <div class="ag-name">LISTER</div>
-            <div class="ag-status"><span class="dot" style="background:rgba(251,188,4,.6)"></span> Idle · Auto-publish ≥75</div>
+            <div class="ag-status"><span class="dot" style="background:rgba(251,188,4,.6)"></span> Idle · Triggered on approval</div>
             <div class="ag-last">Last: 3 listings published today</div>
+            <button class="ag-run-btn" id="run-lister" onclick="runAgent('lister','anthropic/claude-sonnet-4-6')" disabled title="LISTER runs when you approve a product">▶ On approval</button>
           </div>
           <div class="ag-right"><div class="ag-stat" style="color:var(--green)">3</div><div class="ag-stat-l">today</div></div>
+        </div>
+        <div class="agent-card">
+          <div class="ag-ico" style="background:var(--y2)">💰</div>
+          <div class="ag-body">
+            <div class="ag-name">MIDAS</div>
+            <div class="ag-status"><span class="dot" style="background:var(--green)"></span> Active · Finance & P&L</div>
+            <div class="ag-last">Last: P&L updated · profit €381</div>
+            <button class="ag-run-btn" id="run-midas" onclick="runAgent('midas','openai/gpt-5.1-codex')">▶ Run now</button>
+          </div>
+          <div class="ag-right"><div class="ag-stat" style="color:var(--green)">€381</div><div class="ag-stat-l">profit</div></div>
+        </div>
+        <div class="agent-card">
+          <div class="ag-ico" style="background:var(--b2)">⚙️</div>
+          <div class="ag-body">
+            <div class="ag-name">FEED</div>
+            <div class="ag-status"><span class="dot" style="background:var(--green)"></span> Active · Feed optimizer</div>
+            <div class="ag-last">Last: 2 draft proposals created</div>
+            <button class="ag-run-btn" id="run-feed" onclick="runAgent('feed','openai/gpt-5.1-codex')">▶ Run now</button>
+          </div>
+          <div class="ag-right"><div class="ag-stat" style="color:var(--blue)">2</div><div class="ag-stat-l">drafts</div></div>
         </div>
       </div>
 
@@ -1400,6 +1421,83 @@ function toggleSetting(id) {
 }
 
 // ===== INIT =====
+// ===== AGENT RUNNER (OpenClaw-native) =====
+async function runAgent(name, model) {
+  const btn = document.getElementById('run-' + name);
+  if (!btn || btn.disabled) return;
+
+  // Set loading state
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.classList.remove('success','error');
+  btn.classList.add('running');
+  btn.textContent = '⏳ Running...';
+
+  try {
+    // 1. Fetch the agent PROMPT.md with paths filled in
+    const promptResp = await fetch('/proxy/agent-prompt/' + name);
+    if (!promptResp.ok) throw new Error('Could not load agent prompt — is serve.py running?');
+    const { prompt } = await promptResp.json();
+
+    // 2. Spawn an OpenClaw session for this agent
+    const invokeResp = await fetch('/proxy/tools/invoke', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tool: 'sessions_spawn',
+        args: {
+          task:              prompt,
+          runtime:           'subagent',
+          model:             model,
+          mode:              'run',
+          runTimeoutSeconds: 600,
+          cleanup:           'keep',
+        }
+      })
+    });
+
+    const data = await invokeResp.json();
+
+    if (!invokeResp.ok || data.ok === false) {
+      const msg = data?.error?.message || data?.error || 'Gateway error';
+      // Common case: sessions_spawn not allowed — show config hint
+      if (String(msg).toLowerCase().includes('not available') || invokeResp.status === 404) {
+        throw new Error('sessions_spawn not allowed — add it to gateway config (see gateway-config-snippet.json)');
+      }
+      throw new Error(msg);
+    }
+
+    // Success — session spawned
+    const sessionKey = data?.result?.childSessionKey || data?.result?.sessionKey || '?';
+    btn.classList.remove('running');
+    btn.classList.add('success');
+    btn.textContent = '✓ Started';
+    btn.title = 'Session: ' + sessionKey + ' — check Inbox for results';
+
+    // Reset button after 4s
+    setTimeout(() => {
+      btn.classList.remove('success');
+      btn.textContent = originalText;
+      btn.disabled = false;
+      btn.title = '';
+    }, 4000);
+
+  } catch(err) {
+    btn.classList.remove('running');
+    btn.classList.add('error');
+    btn.textContent = '✗ Error';
+    btn.title = err.message || String(err);
+    console.error('[runAgent]', name, err);
+
+    setTimeout(() => {
+      btn.classList.remove('error');
+      btn.textContent = originalText;
+      btn.disabled = false;
+      btn.title = '';
+    }, 5000);
+  }
+}
+
 window.addEventListener('load',()=>{
   setTimeout(()=>hcDraw('rev'),100);
   gwLoad();

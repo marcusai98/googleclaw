@@ -55,6 +55,10 @@ class GCHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/bootstrap.js":
             self._serve_bootstrap()
+        elif self.path.startswith("/proxy/data/"):
+            self._serve_data_file()
+        elif self.path.startswith("/proxy/agent-prompt/"):
+            self._serve_agent_prompt()
         elif self.path in ("/", ""):
             self.path = "/web.html"
             super().do_GET()
@@ -170,6 +174,68 @@ window.GC_BOOTSTRAP = {{
             self.end_headers()
             self.wfile.write(resp)
             print(f"[serve] config.json updated — thresholds: {new_cfg.get('thresholds','')}")
+        except Exception as e:
+            self._json_error(500, str(e))
+
+    # ── /proxy/data/<filename> — serve data/*.json files ─────────────────────
+    def _serve_data_file(self):
+        # Extract filename from path: /proxy/data/queue.json -> queue.json
+        filename = self.path.replace("/proxy/data/", "", 1)
+
+        # Security: only allow .json files, no path traversal
+        if not filename.endswith(".json") or "/" in filename or "\\" in filename or ".." in filename:
+            self._json_error(400, "Invalid filename — must be a .json file without path separators")
+            return
+
+        filepath = os.path.join(SCRIPT_DIR, "data", filename)
+        if not os.path.exists(filepath):
+            self._json_error(404, f"File not found: data/{filename}")
+            return
+
+        try:
+            with open(filepath, "r") as f:
+                content = f.read()
+            body = content.encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.send_cors()
+            self.end_headers()
+            self.wfile.write(body)
+        except Exception as e:
+            self._json_error(500, str(e))
+
+    # ── /proxy/agent-prompt/<name> — serve agent PROMPT.md with path filled ──
+    def _serve_agent_prompt(self):
+        # Extract agent name from path: /proxy/agent-prompt/trends -> trends
+        name = self.path.replace("/proxy/agent-prompt/", "", 1).strip("/")
+
+        # Security: only allow known agent names
+        allowed_agents = {"trends", "scout", "lister", "midas", "feed"}
+        if name not in allowed_agents:
+            self._json_error(404, f"Agent not found: {name}. Allowed: {', '.join(sorted(allowed_agents))}")
+            return
+
+        prompt_path = os.path.join(SCRIPT_DIR, "agents", name, "PROMPT.md")
+        if not os.path.exists(prompt_path):
+            self._json_error(404, f"PROMPT.md not found for agent: {name}")
+            return
+
+        try:
+            with open(prompt_path, "r") as f:
+                content = f.read()
+
+            # Replace {{REPO_PATH}} with actual repo path
+            content = content.replace("{{REPO_PATH}}", SCRIPT_DIR)
+
+            resp = json.dumps({"name": name, "prompt": content})
+            body = resp.encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.send_cors()
+            self.end_headers()
+            self.wfile.write(body)
         except Exception as e:
             self._json_error(500, str(e))
 

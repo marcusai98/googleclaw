@@ -648,7 +648,7 @@ def main():
 
     output = {
         "generatedAt":      datetime.datetime.utcnow().isoformat() + "Z",
-        "validUntil":       (today + datetime.timedelta(days=7)).isoformat() + "T02:00:00Z",
+        "validUntil":       (today + datetime.timedelta(days=7)).isoformat() + "T23:00:00Z",
         "storeNiche":       niche,
         "market":           market,
         "trendsCount":      len(final),

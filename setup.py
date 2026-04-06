@@ -357,8 +357,8 @@ CRONS = [
     {
         "id":       "trends",
         "name":     "googleclaw-trends",
-        "schedule": "0 0 * * *",
-        "label":    "TRENDS — dagelijks 00:00",
+        "schedule": "0 23 * * 0",
+        "label":    "TRENDS — wekelijks zondag 23:00",
         "task":     "Run GoogleClaw TRENDS agent. Read agents/trends/prompt.md and agents/trends/state.md for full context. Execute the TRENDS pipeline."
     },
     {
@@ -371,8 +371,8 @@ CRONS = [
     {
         "id":       "scout",
         "name":     "googleclaw-scout",
-        "schedule": "0 10 * * *",
-        "label":    "SCOUT — dagelijks 10:00",
+        "schedule": "0 6 * * *",
+        "label":    "SCOUT — dagelijks 06:00",
         "task":     "Run GoogleClaw SCOUT agent. Read agents/scout/prompt.md and agents/scout/state.md for full context. Execute the SCOUT product discovery pipeline."
     },
     {

@@ -279,7 +279,7 @@ def main():
     # SCOUT only runs if trends.json was generated today.
     # TRENDS runs at 00:00 — SCOUT at 10:00 — so 10h window is plenty.
     # If TRENDS failed or Manus ran long, we bail rather than use stale data.
-    MAX_TRENDS_AGE_HOURS = 12  # generous upper bound
+    MAX_TRENDS_AGE_HOURS = 168  # 7 days — TRENDS runs weekly (Sunday 23:00)
 
     generated_at = None
     if isinstance(trends_data, dict):

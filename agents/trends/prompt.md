@@ -1,7 +1,7 @@
 # TRENDS — Cron Task Prompt
 
 > Model: Manus AI
-> Schedule: Daily at 00:00 (midnight, store timezone)
+> Schedule: Weekly on Sunday at 23:00 (store timezone)
 > Trigger: Cron
 
 ---

@@ -1,7 +1,7 @@
 # TRENDS — Weekly Market Research Agent
 
 Identifies the top trending product types within the store's niche.
-Runs every Monday at 02:00 and writes `data/trends.json` for SCOUT to consume.
+Runs every Sunday at 23:00 and writes `data/trends.json` for SCOUT to consume.
 
 ## How it works
 
@@ -56,8 +56,8 @@ openclaw cron add \
 
 ```json
 {
-  "generatedAt": "2026-04-07T02:00:00Z",
-  "validUntil": "2026-04-14T02:00:00Z",
+  "generatedAt": "2026-04-06T23:00:00Z",
+  "validUntil": "2026-04-13T23:00:00Z",
   "storeNiche": "women's fashion",
   "market": "Netherlands",
   "trendsCount": 7,

@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GoogleClaw Setup</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: #040B1B;
+            color: #D3D8F2;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 640px;
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .logo h1 {
+            font-size: 32px;
+            font-weight: 700;
+            color: #D3D8F2;
+        }
+
+        .logo h1 span {
+            color: #FD6737;
+        }
+
+        .logo p {
+            color: #636D8B;
+            font-size: 14px;
+            margin-top: 4px;
+        }
+
+        /* Progress Bar */
+        .progress-container {
+            margin-bottom: 32px;
+        }
+
+        .progress-bar {
+            display: flex;
+            justify-content: space-between;
+            position: relative;
+            margin-bottom: 12px;
+        }
+
+        .progress-bar::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: #0D1626;
+            transform: translateY(-50%);
+            z-index: 0;
+        }
+
+        .progress-bar::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            height: 2px;
+            background: #FD6737;
+            transform: translateY(-50%);
+            z-index: 1;
+            transition: width 0.3s ease;
+            width: var(--progress, 0%);
+        }
+
+        .step-indicator {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #0D1626;
+            border: 2px solid #1a2336;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+            color: #636D8B;
+            z-index: 2;
+            transition: all 0.3s ease;
+        }
+
+        .step-indicator.active {
+            background: #FD6737;
+            border-color: #FD6737;
+            color: #fff;
+        }
+
+        .step-indicator.completed {
+            background: #FD6737;
+            border-color: #FD6737;
+            color: #fff;
+        }
+
+        .progress-labels {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .progress-label {
+            font-size: 10px;
+            color: #636D8B;
+            text-align: center;
+            width: 32px;
+        }
+
+        .progress-label.active {
+            color: #FD6737;
+        }
+
+        /* Card */
+        .card {
+            background: #0D1626;
+            border-radius: 16px;
+            padding: 32px;
+            margin-bottom: 24px;
+        }
+
+        .step {
+            display: none;
+        }
+
+        .step.active {
+            display: block;
+        }
+
+        .step-header {
+            margin-bottom: 24px;
+        }
+
+        .step-header h2 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .step-header p {
+            color: #636D8B;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .info-box {
+            background: rgba(253, 103, 55, 0.1);
+            border: 1px solid rgba(253, 103, 55, 0.2);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 24px;
+            font-size: 13px;
+            line-height: 1.6;
+            color: #D3D8F2;
+        }
+
+        /* Form Elements */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: #D3D8F2;
+        }
+
+        .form-group label .required {
+            color: #FD6737;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px 16px;
+            background: #040B1B;
+            border: 1px solid #1a2336;
+            border-radius: 8px;
+            color: #D3D8F2;
+            font-family: 'Poppins', sans-serif;
+            font-size: 14px;
+            transition: border-color 0.2s ease;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #FD6737;
+        }
+
+        .form-group input::placeholder {
+            color: #636D8B;
+        }
+
+        .form-group select {
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23636D8B' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 16px center;
+            padding-right: 40px;
+        }
+
+        .form-group select option {
+            background: #0D1626;
+            color: #D3D8F2;
+        }
+
+        .help-text {
+            font-size: 11px;
+            color: #636D8B;
+            margin-top: 6px;
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #636D8B;
+            cursor: pointer;
+            padding: 4px;
+            font-size: 12px;
+        }
+
+        .toggle-password:hover {
+            color: #D3D8F2;
+        }
+
+        .input-wrapper input[type="password"],
+        .input-wrapper input[type="text"].password-field {
+            padding-right: 48px;
+        }
+
+        /* Buttons */
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 32px;
+        }
+
+        .btn {
+            padding: 14px 28px;
+            border-radius: 8px;
+            font-family: 'Poppins', sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+        }
+
+        .btn-primary {
+            background: #FD6737;
+            color: #fff;
+            flex: 1;
+        }
+
+        .btn-primary:hover {
+            background: #e55a2d;
+        }
+
+        .btn-primary:disabled {
+            background: #636D8B;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: transparent;
+            border: 1px solid #1a2336;
+            color: #D3D8F2;
+        }
+
+        .btn-secondary:hover {
+            border-color: #636D8B;
+        }
+
+        .btn-test {
+            background: transparent;
+            border: 1px solid #FD6737;
+            color: #FD6737;
+            margin-top: 12px;
+            width: 100%;
+        }
+
+        .btn-test:hover {
+            background: rgba(253, 103, 55, 0.1);
+        }
+
+        .btn-test.success {
+            border-color: #22c55e;
+            color: #22c55e;
+        }
+
+        .btn-test.error {
+            border-color: #ef4444;
+            color: #ef4444;
+        }
+
+        /* Loading */
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid transparent;
+            border-top-color: currentColor;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Success Screen */
+        .success-screen {
+            text-align: center;
+            padding: 48px 32px;
+        }
+
+        .success-icon {
+            width: 80px;
+            height: 80px;
+            background: rgba(34, 197, 94, 0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+            font-size: 40px;
+        }
+
+        .success-screen h2 {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .success-screen p {
+            color: #636D8B;
+            margin-bottom: 32px;
+        }
+
+        .success-screen .btn-primary {
+            display: inline-block;
+            text-decoration: none;
+        }
+
+        /* Error Message */
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 16px;
+            color: #ef4444;
+            font-size: 13px;
+        }
+
+        /* Validation */
+        .form-group.invalid input,
+        .form-group.invalid select {
+            border-color: #ef4444;
+        }
+
+        .form-group .validation-error {
+            color: #ef4444;
+            font-size: 11px;
+            margin-top: 4px;
+            display: none;
+        }
+
+        .form-group.invalid .validation-error {
+            display: block;
+        }
+
+        /* Row layout for smaller fields */
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        @media (max-width: 480px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .button-group {
+                flex-direction: column-reverse;
+            }
+
+            .progress-label {
+                font-size: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <h1>Google<span>Claw</span></h1>
+            <p>Setup Wizard</p>
+        </div>
+
+        <div class="progress-container">
+            <div class="progress-bar" id="progressBar">
+                <div class="step-indicator active" data-step="1">1</div>
+                <div class="step-indicator" data-step="2">2</div>
+                <div class="step-indicator" data-step="3">3</div>
+                <div class="step-indicator" data-step="4">4</div>
+                <div class="step-indicator" data-step="5">5</div>
+                <div class="step-indicator" data-step="6">6</div>
+                <div class="step-indicator" data-step="7">7</div>
+                <div class="step-indicator" data-step="8">8</div>
+            </div>
+            <div class="progress-labels">
+                <span class="progress-label active">Store</span>
+                <span class="progress-label">Shopify</span>
+                <span class="progress-label">Ads</span>
+                <span class="progress-label">Supplier</span>
+                <span class="progress-label">AI</span>
+                <span class="progress-label">Gateway</span>
+                <span class="progress-label">Notify</span>
+                <span class="progress-label">Limits</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <!-- Step 1: Store Info -->
+            <div class="step active" data-step="1">
+                <div class="step-header">
+                    <h2>Store Information</h2>
+                    <p>Tell us about your store and preferences</p>
+                </div>
+
+                <div class="form-group">
+                    <label>Store Name <span class="required">*</span></label>
+                    <input type="text" name="store_name" placeholder="Sophia Fashion" required>
+                    <span class="validation-error">Store name is required</span>
+                </div>
+
+                <div class="form-group">
+                    <label>Your Name <span class="required">*</span></label>
+                    <input type="text" name="your_name" placeholder="John Doe" required>
+                    <span class="validation-error">Your name is required</span>
+                </div>
+
+                <div class="form-group">
+                    <label>Agent Bot Name <span class="required">*</span></label>
+                    <input type="text" name="agent_name" placeholder="ARIA" required>
+                    <p class="help-text">Name your GoogleClaw agent</p>
+                    <span class="validation-error">Agent name is required</span>
+                </div>
+
+                <div class="form-group">
+                    <label>Timezone</label>
+                    <select name="timezone">
+                        <option value="Europe/Amsterdam" selected>Europe/Amsterdam (CET)</option>
+                        <option value="Europe/London">Europe/London (GMT)</option>
+                        <option value="Europe/Paris">Europe/Paris (CET)</option>
+                        <option value="Europe/Berlin">Europe/Berlin (CET)</option>
+                        <option value="Europe/Madrid">Europe/Madrid (CET)</option>
+                        <option value="Europe/Rome">Europe/Rome (CET)</option>
+                        <option value="Europe/Brussels">Europe/Brussels (CET)</option>
+                        <option value="Europe/Vienna">Europe/Vienna (CET)</option>
+                        <option value="Europe/Stockholm">Europe/Stockholm (CET)</option>
+                        <option value="Europe/Warsaw">Europe/Warsaw (CET)</option>
+                        <option value="Europe/Lisbon">Europe/Lisbon (WET)</option>
+                        <option value="Europe/Dublin">Europe/Dublin (GMT)</option>
+                        <option value="Europe/Athens">Europe/Athens (EET)</option>
+                        <option value="Europe/Helsinki">Europe/Helsinki (EET)</option>
+                    </select>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Niche <span class="required">*</span></label>
+                        <input type="text" name="niche" placeholder="women's fashion" required>
+                        <span class="validation-error">Niche is required</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Market <span class="required">*</span></label>
+                        <input type="text" name="market" placeholder="Netherlands" required>
+                        <span class="validation-error">Market is required</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Store Language</label>
+                    <input type="text" name="store_language" value="Dutch">
+                </div>
+
+                <div class="button-group">
+                    <button type="button" class="btn btn-primary" onclick="nextStep()">Next</button>
+                </div>
+            </div>
+
+            <!-- Step 2: Shopify -->
+            <div class="step" data-step="2">
+                <div class="step-header">
+                    <h2>Shopify Connection</h2>
+                    <p>Connect your Shopify store</p>
+                </div>
+
+                <div class="info-box">
+                    Since January 2026, Shopify uses OAuth instead of static tokens. Create a Custom App in <strong>Shopify Admin → Settings → Apps → Develop apps</strong>. Required scopes: <code>write_products</code> + <code>read_products</code> only.
+                </div>
+
+                <div class="form-group">
+                    <label>Store Domain</label>
+                    <input type="text" name="shopify_domain" placeholder="your-store.myshopify.com">
+                </div>
+
+                <div class="form-group">
+                    <label>Client ID</label>
+                    <input type="text" name="shopify_client_id">
+                </div>
+
+                <div class="form-group">
+                    <label>Client Secret</label>
+                    <div class="input-wrapper">
+                        <input type="password" name="shopify_client_secret" class="password-field">
+                        <button type="button" class="toggle-password" onclick="togglePassword(this)">Show</button>
+                    </div>
+                </div>
+
+                <button type="button" class="btn btn-test" id="testShopifyBtn" onclick="testShopifyConnection()">
+                    Test Connection
+                </button>
+                <div id="shopifyTestResult"></div>
+
+                <div class="button-group">
+                    <button type="button" class="btn btn-secondary" onclick="prevStep()">Back</button>
+                    <button type="button" class="btn btn-primary" onclick="nextStep()">Next</button>
+                </div>
+            </div>
+
+            <!-- Step 3: Google Ads -->
+            <div class="step" data-step="3">
+                <div class="step-header">
+                    <h2>Google Ads</h2>
+                    <p>Connect your Google Ads account</p>
+                </div>
+
+                <div class="form-group">
+                    <label>Customer ID</label>
+                    <input type="text" name="google_ads_customer_id" placeholder="123-456-7890">
+                </div>
+
+                <div class="form-group">
+                    <label>Developer Token</label>
+                    <div class="input-wrapper">
+                        <input type="password" name="google_ads_developer_token" class="password-field">
+                        <button type="button" class="toggle-password" onclick="togglePassword(this)">Show</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>OAuth Client ID</label>
+                    <input type="text" name="google_ads_oauth_client_id">
+                </div>
+
+                <div class="form-group">
+                    <label>OAuth Client Secret</label>
+                    <div class="input-wrapper">
+                        <input type="password" name="google_ads_oauth_client_secret" class="password-field">
+                        <button type="button" class="toggle-password" onclick="togglePassword(this)">Show</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Refresh Token</label>
+                    <div class="input-wrapper">
+                        <input type="password" name="google_ads_refresh_token" class="password-field">
+                        <button type="button" class="toggle-password" onclick="togglePassword(this)">Show</button>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button type="button" class="btn btn-secondary" onclick="prevStep()">Back</button>
+                    <button type="button" class="btn btn-primary" onclick="nextStep()">Next</button>
+                </div>
+            </div>
+
+            <!-- Step 4: Supplier APIs -->
+            <div class="step" data-step="4">
+                <div class="step-header">
+                    <h2>Supplier APIs</h2>
+                    <p>Connect your dropshipping suppliers</p>
+                </div>
+
+                <div class="form-group">
+                    <label>CJ Dropshipping Email</label>
+                    <input type="text" name="cj_email" placeholder="email@example.com">
+                </div>
+
+                <div class="form-group">
+                    <label>CJ Dropshipping Password</label>
+                    <div class="input-wrapper">
+                        <input type="password" name="cj_password" class="password-field">
+                        <button type="button" class="toggle-password" onclick="togglePassword(this)">Show</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Apify Token</label>
+                    <div class="input-wrapper">
+                        <input type="password" name="apify_token" class="password-field">
+                        <button type="button" class="toggle-password" onclick="togglePassword(this)">Show</button>
+                    </div>
+                    <p class="help-text">Free account works. Used for Amazon product research.</p>
+                </div>
+
+                <div class="button-group">
+                    <button type="button" class="btn btn-secondary" onclick="prevStep()">Back</button>
+                    <button type="button" class="btn btn-primary" onclick="nextStep()">Next</button>
+                </div>
+            </div>
+
+            <!-- Step 5: AI APIs -->
+            <div class="step" data-step="5">
+                <div class="step-header">
+                    <h2>AI APIs</h2>
+                    <p>Configure your AI providers</p>
+                </div>
+
+                <div class="form-group">
+                    <label>OpenAI API Key</label>
+                    <div class="input-wrapper">
+                        <input type="password" name="openai_api_key" class="password-field">
+                        <button type="button" class="toggle-password" onclick="togglePassword(this)">Show</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Anthropic API Key</label>
+                    <div class="input-wrapper">
+                        <input type="password" name="anthropic_api_key" class="password-field">
+                        <button type="button" class="toggle-password" onclick="togglePassword(this)">Show</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Gemini API Key</label>
+                    <div class="input-wrapper">
+                        <input type="password" name="gemini_api_key" class="password-field">
+                        <button type="button" class="toggle-password" onclick="togglePassword(this)">Show</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Manus API Key</label>
+                    <div class="input-wrapper">
+                        <input type="password" name="manus_api_key" class="password-field">
+                        <button type="button" class="toggle-password" onclick="togglePassword(this)">Show</button>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button type="button" class="btn btn-secondary" onclick="prevStep()">Back</button>
+                    <button type="button" class="btn btn-primary" onclick="nextStep()">Next</button>
+                </div>
+            </div>
+
+            <!-- Step 6: OpenClaw Gateway -->
+            <div class="step" data-step="6">
+                <div class="step-header">
+                    <h2>OpenClaw Gateway</h2>
+                    <p>Connect to your OpenClaw instance</p>
+                </div>
+
+                <div class="info-box">
+                    Your OpenClaw gateway URL and token. Found in <code>~/.openclaw/openclaw.json</code>
+                </div>
+
+                <div class="form-group">
+                    <label>Gateway URL</label>
+                    <input type="text" name="openclaw_gateway_url" placeholder="ws://your-vps-ip:18789">
+                </div>
+
+                <div class="form-group">
+                    <label>Gateway Token</label>
+                    <div class="input-wrapper">
+                        <input type="password" name="openclaw_gateway_token" class="password-field">
+                        <button type="button" class="toggle-password" onclick="togglePassword(this)">Show</button>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button type="button" class="btn btn-secondary" onclick="prevStep()">Back</button>
+                    <button type="button" class="btn btn-primary" onclick="nextStep()">Next</button>
+                </div>
+            </div>
+
+            <!-- Step 7: Notifications -->
+            <div class="step" data-step="7">
+                <div class="step-header">
+                    <h2>Notifications</h2>
+                    <p>Configure alerts and notifications</p>
+                </div>
+
+                <div class="form-group">
+                    <label>Telegram Bot Token</label>
+                    <div class="input-wrapper">
+                        <input type="password" name="telegram_bot_token" class="password-field">
+                        <button type="button" class="toggle-password" onclick="togglePassword(this)">Show</button>
+                    </div>
+                    <p class="help-text">Create via @BotFather on Telegram</p>
+                </div>
+
+                <div class="form-group">
+                    <label>Telegram Chat ID</label>
+                    <input type="text" name="telegram_chat_id">
+                    <p class="help-text">Your Telegram user ID</p>
+                </div>
+
+                <div class="form-group">
+                    <label>Competitor Google Sheet URL</label>
+                    <input type="text" name="competitor_sheet_url" placeholder="https://docs.google.com/spreadsheets/d/...">
+                    <p class="help-text">Optional: Google Sheet with competitor products for SCOUT</p>
+                </div>
+
+                <div class="button-group">
+                    <button type="button" class="btn btn-secondary" onclick="prevStep()">Back</button>
+                    <button type="button" class="btn btn-primary" onclick="nextStep()">Next</button>
+                </div>
+            </div>
+
+            <!-- Step 8: Thresholds -->
+            <div class="step" data-step="8">
+                <div class="step-header">
+                    <h2>Thresholds & Limits</h2>
+                    <p>Configure automation thresholds</p>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Scale Trigger ROAS</label>
+                        <input type="number" name="scale_trigger_roas" step="0.1" value="3.0">
+                        <p class="help-text">ROAS above this = scale up signal</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Alert Trigger ROAS</label>
+                        <input type="number" name="alert_trigger_roas" step="0.1" value="1.0">
+                        <p class="help-text">ROAS below this for N days = alert</p>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Alert After Days</label>
+                        <input type="number" name="alert_after_days" value="3">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Minimum Selling Price €</label>
+                        <input type="number" name="min_selling_price" value="40">
+                        <p class="help-text">SCOUT ignores products below this price</p>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Auto-Publish Score</label>
+                        <input type="number" name="auto_publish_score" min="0" max="100" value="75">
+                        <p class="help-text">SCOUT score to auto-approve (0 = always ask)</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Daily Candidate Limit</label>
+                        <input type="number" name="daily_candidate_limit" value="10">
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button type="button" class="btn btn-secondary" onclick="prevStep()">Back</button>
+                    <button type="button" class="btn btn-primary" id="completeBtn" onclick="completeSetup()">
+                        Complete Setup
+                    </button>
+                </div>
+
+                <div id="submitError"></div>
+            </div>
+
+            <!-- Success Screen -->
+            <div class="step success-screen" data-step="success">
+                <div class="success-icon">✓</div>
+                <h2>GoogleClaw is ready!</h2>
+                <p>Your configuration has been saved. You can now start using GoogleClaw.</p>
+                <a href="/" class="btn btn-primary">Open GoogleClaw</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State management
+        let currentStep = 1;
+        const totalSteps = 8;
+        const formData = {};
+
+        // Initialize form data from inputs
+        function initFormData() {
+            document.querySelectorAll('input, select').forEach(input => {
+                if (input.name) {
+                    formData[input.name] = input.value || '';
+                }
+            });
+        }
+
+        // Save current step data
+        function saveStepData() {
+            const currentStepEl = document.querySelector(`.step[data-step="${currentStep}"]`);
+            if (!currentStepEl) return;
+
+            currentStepEl.querySelectorAll('input, select').forEach(input => {
+                if (input.name) {
+                    formData[input.name] = input.value;
+                }
+            });
+        }
+
+        // Restore step data
+        function restoreStepData() {
+            const currentStepEl = document.querySelector(`.step[data-step="${currentStep}"]`);
+            if (!currentStepEl) return;
+
+            currentStepEl.querySelectorAll('input, select').forEach(input => {
+                if (input.name && formData[input.name] !== undefined) {
+                    input.value = formData[input.name];
+                }
+            });
+        }
+
+        // Validate current step
+        function validateStep() {
+            const currentStepEl = document.querySelector(`.step[data-step="${currentStep}"]`);
+            if (!currentStepEl) return true;
+
+            let isValid = true;
+            currentStepEl.querySelectorAll('input[required]').forEach(input => {
+                const formGroup = input.closest('.form-group');
+                if (!input.value.trim()) {
+                    formGroup.classList.add('invalid');
+                    isValid = false;
+                } else {
+                    formGroup.classList.remove('invalid');
+                }
+            });
+
+            return isValid;
+        }
+
+        // Update progress bar
+        function updateProgress() {
+            const progress = ((currentStep - 1) / (totalSteps - 1)) * 100;
+            document.getElementById('progressBar').style.setProperty('--progress', `${progress}%`);
+
+            // Update step indicators
+            document.querySelectorAll('.step-indicator').forEach((indicator, index) => {
+                const step = index + 1;
+                indicator.classList.remove('active', 'completed');
+                if (step === currentStep) {
+                    indicator.classList.add('active');
+                } else if (step < currentStep) {
+                    indicator.classList.add('completed');
+                }
+            });
+
+            // Update labels
+            document.querySelectorAll('.progress-label').forEach((label, index) => {
+                const step = index + 1;
+                label.classList.toggle('active', step === currentStep);
+            });
+        }
+
+        // Show step
+        function showStep(step) {
+            document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+            const stepEl = document.querySelector(`.step[data-step="${step}"]`);
+            if (stepEl) {
+                stepEl.classList.add('active');
+            }
+            updateProgress();
+        }
+
+        // Next step
+        function nextStep() {
+            if (!validateStep()) return;
+            saveStepData();
+
+            if (currentStep < totalSteps) {
+                currentStep++;
+                showStep(currentStep);
+                restoreStepData();
+            }
+        }
+
+        // Previous step
+        function prevStep() {
+            saveStepData();
+
+            if (currentStep > 1) {
+                currentStep--;
+                showStep(currentStep);
+                restoreStepData();
+            }
+        }
+
+        // Toggle password visibility
+        function togglePassword(btn) {
+            const input = btn.parentElement.querySelector('input');
+            if (input.type === 'password') {
+                input.type = 'text';
+                btn.textContent = 'Hide';
+            } else {
+                input.type = 'password';
+                btn.textContent = 'Show';
+            }
+        }
+
+        // Test Shopify connection
+        async function testShopifyConnection() {
+            const btn = document.getElementById('testShopifyBtn');
+            const result = document.getElementById('shopifyTestResult');
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span>Testing...';
+            btn.classList.remove('success', 'error');
+            result.innerHTML = '';
+
+            saveStepData();
+
+            try {
+                const response = await fetch('/setup/test-shopify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        domain: formData.shopify_domain,
+                        client_id: formData.shopify_client_id,
+                        client_secret: formData.shopify_client_secret
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    btn.innerHTML = '✓ Connected';
+                    btn.classList.add('success');
+                } else {
+                    btn.innerHTML = '✗ Connection Failed';
+                    btn.classList.add('error');
+                    result.innerHTML = `<div class="error-message">${data.error || 'Connection failed'}</div>`;
+                }
+            } catch (error) {
+                btn.innerHTML = '✗ Connection Failed';
+                btn.classList.add('error');
+                result.innerHTML = `<div class="error-message">${error.message}</div>`;
+            }
+
+            btn.disabled = false;
+        }
+
+        // Complete setup
+        async function completeSetup() {
+            if (!validateStep()) return;
+            saveStepData();
+
+            const btn = document.getElementById('completeBtn');
+            const errorDiv = document.getElementById('submitError');
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span>Saving...';
+            errorDiv.innerHTML = '';
+
+            try {
+                const response = await fetch('/setup/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    showStep('success');
+                } else {
+                    btn.disabled = false;
+                    btn.innerHTML = 'Complete Setup';
+                    errorDiv.innerHTML = `<div class="error-message">${data.error || 'Failed to save configuration'}</div>`;
+                }
+            } catch (error) {
+                btn.disabled = false;
+                btn.innerHTML = 'Complete Setup';
+                errorDiv.innerHTML = `<div class="error-message">${error.message}</div>`;
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            initFormData();
+            updateProgress();
+
+            // Clear validation on input
+            document.querySelectorAll('input, select').forEach(input => {
+                input.addEventListener('input', () => {
+                    input.closest('.form-group')?.classList.remove('invalid');
+                });
+            });
+        });
+    </script>
+</body>
+</html>

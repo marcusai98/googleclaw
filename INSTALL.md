@@ -4,7 +4,7 @@
 
 ---
 
-## FOR HUMANS — Two terminal commands, then everything via chat
+## FOR HUMANS — Two terminal commands, then everything via browser
 
 ```bash
 git clone https://github.com/marcusai98/googleclaw

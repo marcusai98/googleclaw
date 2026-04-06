@@ -60,7 +60,16 @@ class GCHandler(SimpleHTTPRequestHandler):
         elif self.path.startswith("/proxy/agent-prompt/"):
             self._serve_agent_prompt()
         elif self.path in ("/", ""):
-            self.path = "/web.html"
+            # Redirect to setup if config.json missing
+            if not os.path.exists(CONFIG_PATH):
+                self.send_response(302)
+                self.send_header("Location", "/setup")
+                self.end_headers()
+            else:
+                self.path = "/web.html"
+                super().do_GET()
+        elif self.path == "/setup":
+            self.path = "/setup.html"
             super().do_GET()
         else:
             super().do_GET()
@@ -70,6 +79,10 @@ class GCHandler(SimpleHTTPRequestHandler):
             self._proxy_invoke()
         elif self.path == "/proxy/config":
             self._write_config()
+        elif self.path == "/setup/save":
+            self._setup_save()
+        elif self.path == "/setup/test-shopify":
+            self._setup_test_shopify()
         else:
             self.send_response(404)
             self.end_headers()
@@ -238,6 +251,153 @@ window.GC_BOOTSTRAP = {{
             self.wfile.write(body)
         except Exception as e:
             self._json_error(500, str(e))
+
+    # ── /setup/test-shopify ───────────────────────────────────────────────
+    def _setup_test_shopify(self):
+        length = int(self.headers.get("Content-Length", 0))
+        body   = json.loads(self.rfile.read(length))
+        domain   = body.get("storeDomain", "").strip().rstrip("/")
+        cid      = body.get("clientId", "").strip()
+        csecret  = body.get("clientSecret", "").strip()
+        try:
+            from urllib.request import Request as UReq, urlopen as uopen
+            import urllib.parse
+            payload = json.dumps({
+                "client_id": cid, "client_secret": csecret,
+                "grant_type": "client_credentials"
+            }).encode()
+            req = UReq(f"https://{domain}/admin/oauth/access_token",
+                       data=payload, headers={"Content-Type": "application/json"}, method="POST")
+            with uopen(req, timeout=10) as r:
+                token = json.loads(r.read()).get("access_token", "")
+            if not token:
+                raise ValueError("No token received — check Client ID and Secret")
+            req2 = UReq(f"https://{domain}/admin/api/2024-01/shop.json",
+                        headers={"X-Shopify-Access-Token": token})
+            with uopen(req2, timeout=8) as r:
+                name = json.loads(r.read()).get("shop", {}).get("name", "unknown")
+            resp = json.dumps({"ok": True, "storeName": name}).encode()
+            self.send_response(200)
+        except Exception as e:
+            resp = json.dumps({"ok": False, "error": str(e)}).encode()
+            self.send_response(400)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(resp)))
+        self.send_cors()
+        self.end_headers()
+        self.wfile.write(resp)
+
+    # ── /setup/save — write config.json + register crons ─────────────────
+    def _setup_save(self):
+        length = int(self.headers.get("Content-Length", 0))
+        data   = json.loads(self.rfile.read(length))
+        try:
+            cfg = {
+                "instance": {
+                    "name":     data.get("storeName", ""),
+                    "owner":    data.get("ownerName", ""),
+                    "bot_name": data.get("botName", ""),
+                    "timezone": data.get("timezone", "Europe/Amsterdam"),
+                },
+                "store": {
+                    "niche":    data.get("niche", ""),
+                    "market":   data.get("market", ""),
+                    "language": data.get("language", "Dutch"),
+                },
+                "shopify": {
+                    "storeDomain":  data.get("storeDomain", ""),
+                    "clientId":     data.get("shopifyClientId", ""),
+                    "clientSecret": data.get("shopifyClientSecret", ""),
+                },
+                "googleAds": {
+                    "customerId":    data.get("gadsCustomerId", ""),
+                    "developerToken": data.get("gadsDeveloperToken", ""),
+                    "clientId":      data.get("gadsClientId", ""),
+                    "clientSecret":  data.get("gadsClientSecret", ""),
+                    "refreshToken":  data.get("gadsRefreshToken", ""),
+                },
+                "cj": {
+                    "email":    data.get("cjEmail", ""),
+                    "password": data.get("cjPassword", ""),
+                },
+                "apify":    {"token": data.get("apifyToken", "")},
+                "openai":   {"apiKey": data.get("openaiKey", "")},
+                "anthropic":{"apiKey": data.get("anthropicKey", "")},
+                "gemini":   {"apiKey": data.get("geminiKey", "")},
+                "manus":    {"apiKey": data.get("manusKey", "")},
+                "openclaw": {
+                    "gatewayUrl":   data.get("gatewayUrl", ""),
+                    "gatewayToken": data.get("gatewayToken", ""),
+                },
+                "notifications": {
+                    "telegram": {
+                        "enabled":  bool(data.get("telegramToken")),
+                        "botToken": data.get("telegramToken", ""),
+                        "chatId":   data.get("telegramChatId", ""),
+                    }
+                },
+                "competitorSheet": data.get("competitorSheet", ""),
+                "thresholds": {
+                    "scale_roas":    float(data.get("scaleRoas", 3.0)),
+                    "alert_roas":    float(data.get("alertRoas", 1.0)),
+                    "alert_days":    int(data.get("alertDays", 3)),
+                    "min_price":     float(data.get("minPrice", 40)),
+                    "autopub_score": int(data.get("autopubScore", 75)),
+                    "daily_limit":   int(data.get("dailyLimit", 10)),
+                },
+                "costs": {
+                    "shopifyMonthly": 39,
+                    "shopifyPaymentsFeePercent": 1.9,
+                    "shopifyPaymentsFeeFixed": 0.25,
+                    "defaultMarginPercent": 40,
+                },
+            }
+            # Write config.json
+            os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
+            with open(CONFIG_PATH, "w") as f:
+                json.dump(cfg, f, indent=2)
+            os.chmod(CONFIG_PATH, 0o600)
+
+            # Register crons
+            cron_results = []
+            tz       = cfg["instance"]["timezone"]
+            repo     = SCRIPT_DIR
+            crons = [
+                ("gc-trends", "0 23 * * 0", "trends",  "openai/gpt-5.1-codex", 600,  "TRENDS — zondag 23:00"),
+                ("gc-scout",  "0 6 * * *",  "scout",   "openai/gpt-5.1-codex", 900,  "SCOUT — dagelijks 06:00"),
+                ("gc-midas",  "0 7 * * *",  "midas",   "openai/gpt-5.1-codex", 600,  "MIDAS — dagelijks 07:00"),
+                ("gc-feed",   "0 6 * * 3",  "feed",    "openai/gpt-5.1-codex", 600,  "FEED — woensdags 06:00"),
+            ]
+            import subprocess as sp
+            for name, schedule, agent_id, model, timeout, desc in crons:
+                prompt_path = os.path.join(repo, "agents", agent_id, "PROMPT.md")
+                if os.path.exists(prompt_path):
+                    with open(prompt_path) as pf:
+                        prompt = pf.read().replace("{{REPO_PATH}}", repo)
+                    result = sp.run(
+                        ["openclaw", "cron", "add",
+                         "--name", name, "--cron", schedule, "--tz", tz,
+                         "--message", prompt, "--session", "isolated",
+                         "--model", model, "--timeout-seconds", str(timeout),
+                         "--description", desc],
+                        capture_output=True, text=True, timeout=15
+                    )
+                    cron_results.append({
+                        "name": name,
+                        "ok": result.returncode == 0,
+                        "msg": result.stderr.strip() or "registered"
+                    })
+
+            resp = json.dumps({"ok": True, "crons": cron_results}).encode()
+            self.send_response(200)
+        except Exception as e:
+            resp = json.dumps({"ok": False, "error": str(e)}).encode()
+            self.send_response(500)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(resp)))
+        self.send_cors()
+        self.end_headers()
+        self.wfile.write(resp)
 
     def _json_error(self, code, msg):
         body = json.dumps({"error": msg}).encode()

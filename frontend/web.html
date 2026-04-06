@@ -802,6 +802,20 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:'Inter',s
         <button onclick="saveThresholds('scout')" id="save-scout" style="padding:8px 18px;border-radius:9px;background:var(--acc);border:none;color:#000;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Save changes</button>
       </div>
 
+      <!-- Competitor Research -->
+      <div class="sec" style="margin-bottom:8px"><div class="sec-t">SCOUT — Competitor research</div></div>
+      <div class="card" style="margin-bottom:4px">
+        <div style="padding:14px 16px">
+          <div style="font-size:13px;font-weight:700;margin-bottom:6px">Competitor Google Sheet URL</div>
+          <div style="font-size:11px;color:var(--t2);margin-bottom:10px">Google Sheet with competitor products — SCOUT uses this for market benchmarking (optional)</div>
+          <input type="text" id="competitor-sheet-input" placeholder="https://docs.google.com/spreadsheets/d/..."
+            style="width:100%;padding:9px 12px;background:var(--card2);border:1px solid var(--line);border-radius:8px;color:var(--t1);font-size:13px;font-family:inherit;box-sizing:border-box">
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-bottom:20px;padding-top:8px">
+        <button onclick="saveCompetitorSheet()" style="padding:8px 18px;border-radius:9px;background:var(--acc);border:none;color:#000;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Save</button>
+      </div>
+
       <!-- Notifications -->
       <div class="sec" style="margin-bottom:8px"><div class="sec-t">Notifications</div></div>
       <div class="card" style="margin-bottom:20px">
@@ -1449,6 +1463,11 @@ function populateFromConfig(cfg) {
   if(t.min_price   !== undefined) { thresholds.minprice = t.min_price;   renderThresh('minprice'); }
   if(t.autopub_score !== undefined){ thresholds.autopub = t.autopub_score; renderThresh('autopub'); }
   if(t.daily_limit !== undefined) { thresholds.products = t.daily_limit; renderThresh('products'); }
+  // Competitor sheet URL
+  if(cfg.competitorSheet !== undefined) {
+    const el = document.getElementById('competitor-sheet-input');
+    if(el) el.value = cfg.competitorSheet || '';
+  }
   // Populate store info in sidebar subtitle if present
   const inst = cfg.instance || {};
   if(inst.name) { const el=document.querySelector('.mh-sub'); if(el && el.closest('#v-settings')) el.textContent=inst.name; }
@@ -1503,6 +1522,21 @@ function adjThresh(key, delta) {
   if(btn && btn.textContent==='Save changes') btn.textContent='Save changes ●';
 }
 function saveThresholds(section) { saveThresholdsToConfig(section); }
+
+async function saveCompetitorSheet() {
+  const url = document.getElementById('competitor-sheet-input').value.trim();
+  try {
+    const r = await fetch('/proxy/config', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({competitorSheet: url})
+    });
+    if (!r.ok) throw new Error('Save failed');
+    showToast('Competitor sheet saved');
+  } catch(e) {
+    showToast('Error: ' + e.message, true);
+  }
+}
 function toggleSetting(id) {
   const el = document.getElementById('tog-'+id);
   if(el) el.classList.toggle('active');

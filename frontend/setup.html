@@ -691,39 +691,16 @@
             <div class="step" data-step="5">
                 <div class="step-header">
                     <h2>AI APIs</h2>
-                    <p>Configure your AI providers</p>
-                </div>
-
-                <div class="form-group">
-                    <label>OpenAI API Key</label>
-                    <div class="input-wrapper">
-                        <input type="password" name="openai_api_key" class="password-field">
-                        <button type="button" class="toggle-password" onclick="togglePassword(this)">Show</button>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label>Anthropic API Key</label>
-                    <div class="input-wrapper">
-                        <input type="password" name="anthropic_api_key" class="password-field">
-                        <button type="button" class="toggle-password" onclick="togglePassword(this)">Show</button>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label>Gemini API Key</label>
-                    <div class="input-wrapper">
-                        <input type="password" name="gemini_api_key" class="password-field">
-                        <button type="button" class="toggle-password" onclick="togglePassword(this)">Show</button>
-                    </div>
+                    <p>OpenAI, Anthropic and Gemini are read from your OpenClaw config automatically</p>
                 </div>
 
                 <div class="form-group">
                     <label>Manus API Key</label>
                     <div class="input-wrapper">
-                        <input type="password" name="manus_api_key" class="password-field">
+                        <input type="password" name="manus_api_key" class="password-field" placeholder="sk-...">
                         <button type="button" class="toggle-password" onclick="togglePassword(this)">Show</button>
                     </div>
+                    <p class="help-text">Used by TRENDS agent for deep market research. Get at <a href="https://manus.ai" target="_blank" style="color:#FD6737">manus.ai</a>.</p>
                 </div>
 
                 <div class="button-group">
@@ -766,28 +743,26 @@
             <div class="step" data-step="7">
                 <div class="step-header">
                     <h2>Notifications</h2>
-                    <p>Configure alerts and notifications</p>
+                    <p>Optional — can also be configured later in Settings</p>
+                </div>
+
+                <div class="info-box">
+                    If you already have OpenClaw connected to Telegram, you can skip this step. GoogleClaw uses the same bot token to send you alerts.
                 </div>
 
                 <div class="form-group">
-                    <label>Telegram Bot Token</label>
+                    <label>Telegram Bot Token <span style="color:#636D8B;font-size:12px">(optional)</span></label>
                     <div class="input-wrapper">
-                        <input type="password" name="telegram_bot_token" class="password-field">
+                        <input type="password" name="telegram_bot_token" class="password-field" placeholder="Leave blank to skip">
                         <button type="button" class="toggle-password" onclick="togglePassword(this)">Show</button>
                     </div>
                     <p class="help-text">Create via @BotFather on Telegram</p>
                 </div>
 
                 <div class="form-group">
-                    <label>Telegram Chat ID</label>
-                    <input type="text" name="telegram_chat_id">
-                    <p class="help-text">Your Telegram user ID</p>
-                </div>
-
-                <div class="form-group">
-                    <label>Competitor Google Sheet URL</label>
-                    <input type="text" name="competitor_sheet_url" placeholder="https://docs.google.com/spreadsheets/d/...">
-                    <p class="help-text">Optional: Google Sheet with competitor products for SCOUT</p>
+                    <label>Your Telegram Chat ID <span style="color:#636D8B;font-size:12px">(optional)</span></label>
+                    <input type="text" name="telegram_chat_id" placeholder="Leave blank to skip">
+                    <p class="help-text">Your numeric Telegram user ID</p>
                 </div>
 
                 <div class="button-group">

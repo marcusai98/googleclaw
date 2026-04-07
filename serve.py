@@ -426,10 +426,20 @@ window.GC_BOOTSTRAP = {{
                 }).encode()
                 req = UReq(f"https://{domain}/admin/oauth/access_token",
                            data=payload, headers={"Content-Type": "application/json"}, method="POST")
-                with uopen(req, timeout=10) as r:
-                    token = json.loads(r.read()).get("access_token", "")
+                try:
+                    with uopen(req, timeout=10) as r:
+                        raw = r.read()
+                        result = json.loads(raw)
+                        token = result.get("access_token", "")
+                except Exception as http_err:
+                    # Capture Shopify's actual error body
+                    import urllib.error
+                    if hasattr(http_err, 'read'):
+                        body = http_err.read().decode('utf-8', errors='replace')
+                        raise ValueError(f"Shopify error: {body}")
+                    raise ValueError(f"HTTP error: {http_err}")
                 if not token:
-                    raise ValueError("No token received — check Client ID and Secret")
+                    raise ValueError(f"No token in response: {result}")
             req2 = UReq(f"https://{domain}/admin/api/2024-01/shop.json",
                         headers={"X-Shopify-Access-Token": token})
             with uopen(req2, timeout=8) as r:

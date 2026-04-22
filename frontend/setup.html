@@ -1019,7 +1019,7 @@
 
                 const data = await response.json();
 
-                if (response.ok && data.success) {
+                if (response.ok && (data.success || data.ok)) {
                     btn.innerHTML = '✓ Connected';
                     btn.classList.add('success');
                 } else {
@@ -1057,7 +1057,7 @@
 
                 const data = await response.json();
 
-                if (response.ok && data.success) {
+                if (response.ok && (data.success || data.ok)) {
                     showStep('success');
                 } else {
                     btn.disabled = false;
@@ -1146,6 +1146,11 @@
                     const sel = document.getElementById('gads_customer_select');
                     const container = document.getElementById('googleCustomerSelect');
                     sel.innerHTML = '';
+                    // Remove any previous state messages
+                    ['googleNoAccountsMsg','googleCustomersError'].forEach(function(id) {
+                        const el = document.getElementById(id); if (el) el.remove();
+                    });
+
                     if (d.customerIds && d.customerIds.length > 0) {
                         d.customerIds.forEach(id => {
                             const opt = document.createElement('option');
@@ -1155,12 +1160,37 @@
                         });
                         document.getElementById('gads_customer_id').value = d.customerIds[0];
                         formData.google_ads_customer_id = d.customerIds[0];
+                        // Keep formData in sync when user picks a different account
+                        sel.onchange = function() {
+                            document.getElementById('gads_customer_id').value = this.value;
+                            formData.google_ads_customer_id = this.value;
+                        };
                         container.style.display = 'block';
+                    } else {
+                        // Empty state: no accounts found
+                        const msg = document.createElement('div');
+                        msg.id = 'googleNoAccountsMsg';
+                        msg.style.cssText = 'margin-top:10px;padding:10px 14px;border-radius:8px;background:rgba(255,159,10,0.12);color:#FF9F0A;font-size:13px;line-height:1.5';
+                        msg.textContent = 'Connected, but no Google Ads accounts found. Make sure your account has access to a Google Ads MCC.';
+                        container.parentNode.insertBefore(msg, container.nextSibling);
+                        container.style.display = 'none';
+                    }
+
+                    // Show API error (if any) as a small warning below the selector
+                    if (d.customersError) {
+                        const errDiv = document.createElement('div');
+                        errDiv.id = 'googleCustomersError';
+                        errDiv.style.cssText = 'margin-top:8px;padding:8px 12px;border-radius:6px;background:rgba(255,69,58,0.10);color:#FF6B6B;font-size:12px;font-family:monospace;word-break:break-all';
+                        errDiv.textContent = 'API error: ' + d.customersError;
+                        const insertRef = document.getElementById('googleNoAccountsMsg') || container;
+                        insertRef.parentNode.insertBefore(errDiv, insertRef.nextSibling);
                     }
 
                     status.style.background = 'rgba(0,201,107,0.12)';
                     status.style.color = '#00C96B';
-                    status.textContent = '✓ Google Ads connected!';
+                    status.textContent = (d.customerIds && d.customerIds.length > 0)
+                        ? '✓ Google Ads connected!'
+                        : '✓ OAuth completed (no accounts found — check MCC access)';
                     btn.textContent = '✓ Connected';
                     btn.style.background = '#00C96B';
                 } else if (d.status && d.status.startsWith('error')) {

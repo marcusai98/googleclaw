@@ -273,7 +273,8 @@ window.GC_BOOTSTRAP = {{
         csecret  = body.get("clientSecret", "").strip() or GC_GOOGLE_CLIENT_SECRET
         dev_tok  = body.get("developerToken", "").strip()
         port     = self.server.server_address[1]
-        redirect = f"http://localhost:{port}/setup/google-auth/callback"
+        public_base = os.environ.get("GC_PUBLIC_BASE_URL", "").rstrip("/")
+        redirect = f"{public_base}/setup/google-auth/callback" if public_base else f"http://localhost:{port}/setup/google-auth/callback"
 
         import urllib.parse, secrets
         state = secrets.token_hex(8)
@@ -343,26 +344,32 @@ window.GC_BOOTSTRAP = {{
                 }
             )
             customer_ids = []
+            customers_error = ""
             try:
-                with uopen(req2, timeout=8) as r:
+                with uopen(req2, timeout=15) as r:
                     data = json.loads(r.read())
                     # resourceNames like "customers/1234567890"
                     customer_ids = [
                         rn.split("/")[-1]
                         for rn in data.get("resourceNames", [])
                     ]
-            except Exception:
-                pass
+            except Exception as ce:
+                customers_error = str(ce)
+                import traceback, sys
+                print(f"[GoogleClaw] listAccessibleCustomers error: {ce}", flush=True)
 
             GCHandler._google_oauth_state.update({
                 "status": "done",
                 "refreshToken": refresh_token,
                 "customerIds": customer_ids,
+                "customersError": customers_error,
+                "hasRefreshToken": bool(refresh_token),
+                "tokenKeys": list(tokens.keys()),
             })
 
             # Close tab and notify opener
             html = b"""<!DOCTYPE html>
-<html><head><title>GoogleClaw — Google Connected</title>
+<html><head><title>GoogleClaw - Google Connected</title>
 <style>body{font-family:sans-serif;background:#040B1B;color:#D3D8F2;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;}</style>
 </head><body>
 <div style="text-align:center">
@@ -394,9 +401,12 @@ window.GC_BOOTSTRAP = {{
     def _google_auth_status(self):
         st   = GCHandler._google_oauth_state
         resp = json.dumps({
-            "status":       st.get("status", "pending"),
-            "customerIds":  st.get("customerIds", []),
-            "refreshToken": st.get("refreshToken", ""),
+            "status":        st.get("status", "pending"),
+            "customerIds":   st.get("customerIds", []),
+            "refreshToken":  st.get("refreshToken", ""),
+            "hasRefreshToken": st.get("hasRefreshToken", False),
+            "customersError": st.get("customersError", ""),
+            "tokenKeys":     st.get("tokenKeys", []),
         }).encode()
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
@@ -460,59 +470,72 @@ window.GC_BOOTSTRAP = {{
         length = int(self.headers.get("Content-Length", 0))
         data   = json.loads(self.rfile.read(length))
         try:
+            # Accept snake_case (frontend form names) OR camelCase (legacy)
+            def g(snake, camel=None, default=""):
+                v = data.get(snake) or (data.get(camel) if camel else None)
+                return v if v is not None else default
+
+            def flt(snake, camel, default):
+                try: return float(g(snake, camel, default) or default)
+                except: return float(default)
+
+            def intt(snake, camel, default):
+                try: return int(g(snake, camel, default) or default)
+                except: return int(default)
+
             cfg = {
                 "instance": {
-                    "name":     data.get("storeName", ""),
-                    "owner":    data.get("ownerName", ""),
-                    "bot_name": data.get("botName", ""),
-                    "timezone": data.get("timezone", "Europe/Amsterdam"),
+                    "name":     g("store_name", "storeName"),
+                    "owner":    g("your_name", "ownerName"),
+                    "bot_name": g("agent_name", "botName"),
+                    "timezone": g("timezone", default="Europe/Amsterdam"),
                 },
                 "store": {
-                    "niche":    data.get("niche", ""),
-                    "market":   data.get("market", ""),
-                    "language": data.get("language", "Dutch"),
+                    "niche":    g("niche"),
+                    "market":   g("market"),
+                    "language": g("store_language", "language", "Dutch"),
                 },
                 "shopify": {
-                    "storeDomain":  data.get("storeDomain", ""),
-                    "accessToken":  data.get("shopifyStaticToken", ""),   # legacy
-                    "clientId":     data.get("shopifyClientId", ""),
-                    "clientSecret": data.get("shopifyClientSecret", ""),
+                    "storeDomain":  g("shopify_domain", "storeDomain"),
+                    "accessToken":  g("shopify_static_token", "shopifyStaticToken"),
+                    "clientId":     g("shopify_client_id", "shopifyClientId"),
+                    "clientSecret": g("shopify_client_secret", "shopifyClientSecret"),
                 },
                 "googleAds": {
-                    "customerId":    data.get("gadsCustomerId", ""),
-                    "developerToken": data.get("gadsDeveloperToken", ""),
-                    "clientId":      data.get("gadsClientId", ""),
-                    "clientSecret":  data.get("gadsClientSecret", ""),
-                    "refreshToken":  data.get("gadsRefreshToken", ""),
+                    "customerId":    g("google_ads_customer_id", "gadsCustomerId"),
+                    "developerToken": g("google_ads_developer_token", "gadsDeveloperToken"),
+                    "clientId":      g("google_ads_oauth_client_id", "gadsClientId"),
+                    "clientSecret":  g("google_ads_oauth_client_secret", "gadsClientSecret"),
+                    "refreshToken":  g("google_ads_refresh_token", "gadsRefreshToken"),
                 },
                 "cj": {
-                    "email":    data.get("cjEmail", ""),
-                    "password": data.get("cjPassword", ""),
+                    "email":    g("cj_email", "cjEmail"),
+                    "password": g("cj_password", "cjPassword"),
                 },
-                "apify":    {"token": data.get("apifyToken", "")},
-                "openai":   {"apiKey": data.get("openaiKey", "")},
-                "anthropic":{"apiKey": data.get("anthropicKey", "")},
-                "gemini":   {"apiKey": data.get("geminiKey", "")},
-                "manus":    {"apiKey": data.get("manusKey", "")},
+                "apify":    {"token": g("apify_token", "apifyToken")},
+                "openai":   {"apiKey": g("openai_key", "openaiKey")},
+                "anthropic":{"apiKey": g("anthropic_key", "anthropicKey")},
+                "gemini":   {"apiKey": g("gemini_key", "geminiKey")},
+                "manus":    {"apiKey": g("manus_api_key", "manusKey")},
                 "openclaw": {
-                    "gatewayUrl":   data.get("gatewayUrl", ""),
-                    "gatewayToken": data.get("gatewayToken", ""),
+                    "gatewayUrl":   g("openclaw_gateway_url", "gatewayUrl"),
+                    "gatewayToken": g("openclaw_gateway_token", "gatewayToken"),
                 },
                 "notifications": {
                     "telegram": {
-                        "enabled":  bool(data.get("telegramToken")),
-                        "botToken": data.get("telegramToken", ""),
-                        "chatId":   data.get("telegramChatId", ""),
+                        "enabled":  bool(g("telegram_bot_token", "telegramToken")),
+                        "botToken": g("telegram_bot_token", "telegramToken"),
+                        "chatId":   g("telegram_chat_id", "telegramChatId"),
                     }
                 },
-                "competitorSheet": data.get("competitorSheet", ""),
+                "competitorSheet": g("competitor_sheet", "competitorSheet"),
                 "thresholds": {
-                    "scale_roas":    float(data.get("scaleRoas", 3.0)),
-                    "alert_roas":    float(data.get("alertRoas", 1.0)),
-                    "alert_days":    int(data.get("alertDays", 3)),
-                    "min_price":     float(data.get("minPrice", 40)),
-                    "autopub_score": int(data.get("autopubScore", 75)),
-                    "daily_limit":   int(data.get("dailyLimit", 10)),
+                    "scale_roas":    flt("scale_trigger_roas",   "scaleRoas",     3.0),
+                    "alert_roas":    flt("alert_trigger_roas",   "alertRoas",     1.0),
+                    "alert_days":    intt("alert_after_days",    "alertDays",     3),
+                    "min_price":     flt("min_selling_price",    "minPrice",      40),
+                    "autopub_score": intt("auto_publish_score",  "autopubScore",  75),
+                    "daily_limit":   intt("daily_candidate_limit","dailyLimit",   10),
                 },
                 "costs": {
                     "shopifyMonthly": 39,
@@ -557,7 +580,7 @@ window.GC_BOOTSTRAP = {{
                         "msg": result.stderr.strip() or "registered"
                     })
 
-            resp = json.dumps({"ok": True, "crons": cron_results}).encode()
+            resp = json.dumps({"ok": True, "success": True, "crons": cron_results}).encode()
             self.send_response(200)
         except Exception as e:
             resp = json.dumps({"ok": False, "error": str(e)}).encode()

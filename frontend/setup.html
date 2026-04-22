@@ -665,8 +665,16 @@
 
                 <div id="googleCustomerSelect" style="display:none">
                     <div class="form-group">
-                        <label>Select Google Ads Account</label>
-                        <select name="google_ads_customer_id_select" id="gads_customer_select" onchange="document.getElementById('gads_customer_id').value=this.value" style="width:100%;padding:10px;background:#111711;border:1px solid rgba(255,255,255,0.07);color:#fff;border-radius:6px">
+                        <label>Google Ads Customer ID <span style="font-weight:400;opacity:.6;font-size:12px">(manual override)</span></label>
+                        <input type="text" id="gads_manual_cid" placeholder="e.g. 123-456-7890"
+                            style="width:100%;padding:10px;background:#111711;border:1px solid rgba(255,255,255,0.07);color:#fff;border-radius:6px;box-sizing:border-box;font-size:14px"
+                            oninput="handleManualCid(this.value)">
+                        <p style="margin:5px 0 12px;font-size:12px;opacity:.5;line-height:1.4">Paste your CID here if the account you want is not shown in the list below, or if account discovery returned no results.</p>
+                    </div>
+                    <div class="form-group" id="gads_dropdown_wrap">
+                        <label>Discovered accounts <span style="font-weight:400;opacity:.6;font-size:12px">(leave blank above to use selection)</span></label>
+                        <select name="google_ads_customer_id_select" id="gads_customer_select"
+                            style="width:100%;padding:10px;background:#111711;border:1px solid rgba(255,255,255,0.07);color:#fff;border-radius:6px">
                         </select>
                     </div>
                 </div>
@@ -1080,7 +1088,22 @@
 
         let googlePollTimer = null;
 
-        async function connectGoogle() {
+        async 
+                function handleManualCid(val) {
+                    const stripped = val.replace(/\D/g, '');
+                    if (stripped.length > 0) {
+                        document.getElementById('gads_customer_id').value = stripped;
+                        formData.google_ads_customer_id = stripped;
+                    } else {
+                        // Revert to dropdown selection if manual cleared
+                        const sel = document.getElementById('gads_customer_select');
+                        if (sel && sel.value) {
+                            document.getElementById('gads_customer_id').value = sel.value;
+                            formData.google_ads_customer_id = sel.value;
+                        }
+                    }
+                }
+                function connectGoogle() {
             const devToken   = document.getElementById('gads_dev_token').value.trim();
             const clientId   = document.getElementById('gads_client_id').value.trim();
             const clientSec  = document.getElementById('gads_client_secret').value.trim();
@@ -1152,18 +1175,26 @@
                     });
 
                     if (d.customerIds && d.customerIds.length > 0) {
-                        d.customerIds.forEach(id => {
+                        // Dedup, sort, format as 123-456-7890
+                        const formatCid = id => id.replace(/\D/g,'').replace(/(\d{3})(\d{3})(\d{4})/,'--');
+                        const stripCid  = id => id.replace(/\D/g,'');
+                        const unique = [...new Set(d.customerIds.map(stripCid))].sort();
+                        sel.innerHTML = '';
+                        unique.forEach(id => {
                             const opt = document.createElement('option');
                             opt.value = id;
-                            opt.textContent = id;
+                            opt.textContent = formatCid(id);
                             sel.appendChild(opt);
                         });
-                        document.getElementById('gads_customer_id').value = d.customerIds[0];
-                        formData.google_ads_customer_id = d.customerIds[0];
-                        // Keep formData in sync when user picks a different account
+                        document.getElementById('gads_customer_id').value = unique[0];
+                        formData.google_ads_customer_id = unique[0];
+                        document.getElementById('gads_dropdown_wrap').style.display = 'block';
                         sel.onchange = function() {
-                            document.getElementById('gads_customer_id').value = this.value;
-                            formData.google_ads_customer_id = this.value;
+                            // Only apply if manual field is empty
+                            if (!document.getElementById('gads_manual_cid').value.trim()) {
+                                document.getElementById('gads_customer_id').value = this.value;
+                                formData.google_ads_customer_id = this.value;
+                            }
                         };
                         container.style.display = 'block';
                     } else {
@@ -1173,7 +1204,8 @@
                         msg.style.cssText = 'margin-top:10px;padding:10px 14px;border-radius:8px;background:rgba(255,159,10,0.12);color:#FF9F0A;font-size:13px;line-height:1.5';
                         msg.textContent = 'Connected, but no Google Ads accounts found. Make sure your account has access to a Google Ads MCC.';
                         container.parentNode.insertBefore(msg, container.nextSibling);
-                        container.style.display = 'none';
+                        document.getElementById('gads_dropdown_wrap').style.display = 'none';
+                        container.style.display = 'block';
                     }
 
                     // Show API error (if any) as a small warning below the selector

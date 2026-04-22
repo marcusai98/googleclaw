@@ -337,7 +337,7 @@ window.GC_BOOTSTRAP = {{
 
             # Get accessible customer IDs
             req2 = UReq(
-                "https://googleads.googleapis.com/v18/customers:listAccessibleCustomers",
+                "https://googleads.googleapis.com/v20/customers:listAccessibleCustomers",
                 headers={
                     "Authorization": f"Bearer {access_token}",
                     "developer-token": st["developerToken"],

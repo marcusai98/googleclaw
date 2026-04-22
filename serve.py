@@ -394,7 +394,7 @@ window.GC_BOOTSTRAP = {{
 
             # Close tab and notify opener
             html = b"""<!DOCTYPE html>
-<html><head><title>GoogleClaw - Google Connected</title>
+<html><head><title>The Syndicate — Google Connected</title>
 <style>body{font-family:sans-serif;background:#040B1B;color:#D3D8F2;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;}</style>
 </head><body>
 <div style="text-align:center">

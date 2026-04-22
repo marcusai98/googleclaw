@@ -1088,8 +1088,7 @@
 
         let googlePollTimer = null;
 
-        async 
-                function handleManualCid(val) {
+        function handleManualCid(val) {
                     const stripped = val.replace(/\D/g, '');
                     if (stripped.length > 0) {
                         document.getElementById('gads_customer_id').value = stripped;
@@ -1103,7 +1102,7 @@
                         }
                     }
                 }
-                function connectGoogle() {
+                async function connectGoogle() {
             const devToken   = document.getElementById('gads_dev_token').value.trim();
             const clientId   = document.getElementById('gads_client_id').value.trim();
             const clientSec  = document.getElementById('gads_client_secret').value.trim();

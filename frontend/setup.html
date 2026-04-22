@@ -679,6 +679,20 @@
                     </div>
                 </div>
 
+                <!-- MCC login customer ID -->
+                <input type="hidden" name="google_ads_login_customer_id" id="gads_login_customer_id">
+
+                <div id="googleMccSection" style="margin-top:16px">
+                    <div class="form-group">
+                        <label>MCC Customer ID <span style="font-weight:400;opacity:.6;font-size:12px">(login-customer-id)</span></label>
+                        <input type="text" id="gads_mcc_input" placeholder="e.g. 123-456-7890"
+                            style="width:100%;padding:10px;background:#111711;border:1px solid rgba(255,255,255,0.07);color:#fff;border-radius:6px;box-sizing:border-box;font-size:14px"
+                            oninput="handleManualMcc(this.value)">
+                        <p style="margin:5px 0 0;font-size:12px;opacity:.5;line-height:1.4">Required for manager-account / sub-account access. Used as <code style="background:rgba(255,255,255,.06);padding:1px 5px;border-radius:3px">login-customer-id</code> in all Google Ads API calls. Auto-detected from OAuth if your account is a manager.</p>
+                    </div>
+                    <div id="gads_mcc_autodetect" style="display:none;margin-top:-8px;margin-bottom:12px;font-size:12px;color:#00C96B;opacity:.8"></div>
+                </div>
+
                 <div class="button-group">
                     <button type="button" class="btn btn-secondary" onclick="prevStep()">Back</button>
                     <button type="button" class="btn btn-primary" id="gadsNextBtn" onclick="nextStep()">Next</button>
@@ -1088,7 +1102,16 @@
 
         let googlePollTimer = null;
 
-        function handleManualCid(val) {
+        function handleManualMcc(val) {
+                    const stripped = val.replace(/\D/g, '');
+                    document.getElementById('gads_login_customer_id').value = stripped;
+                    formData.google_ads_login_customer_id = stripped;
+                    // Clear autodetect hint when user overrides
+                    const hint = document.getElementById('gads_mcc_autodetect');
+                    if (hint) hint.style.display = 'none';
+                }
+
+                function handleManualCid(val) {
                     const stripped = val.replace(/\D/g, '');
                     if (stripped.length > 0) {
                         document.getElementById('gads_customer_id').value = stripped;
@@ -1196,6 +1219,18 @@
                             }
                         };
                         container.style.display = 'block';
+
+                        // Auto-detect MCC: try each CID to find manager accounts
+                        // We already have the full list from OAuth — filter managers
+                        if (d.managerIds && d.managerIds.length > 0) {
+                            const mcc = d.managerIds[0];
+                            const fmt = mcc.replace(/(\d{3})(\d{3})(\d{4})/, '--');
+                            document.getElementById('gads_mcc_input').value = fmt;
+                            document.getElementById('gads_login_customer_id').value = mcc;
+                            formData.google_ads_login_customer_id = mcc;
+                            const hint = document.getElementById('gads_mcc_autodetect');
+                            if (hint) { hint.textContent = '✓ MCC auto-detected: ' + fmt + ' (override above if needed)'; hint.style.display = 'block'; }
+                        }
                     } else {
                         // Empty state: no accounts found
                         const msg = document.createElement('div');

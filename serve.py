@@ -1,3 +1,4 @@
+import re
 #!/usr/bin/env python3
 """
 GoogleClaw — Local Server
@@ -358,10 +359,34 @@ window.GC_BOOTSTRAP = {{
                 import traceback, sys
                 print(f"[GoogleClaw] listAccessibleCustomers error: {ce}", flush=True)
 
+            # Detect manager (MCC) accounts by querying each CID
+            manager_ids = []
+            if customer_ids and access_token:
+                for test_cid in customer_ids[:10]:  # cap at 10 to keep it fast
+                    try:
+                        q = json.dumps({"query": "SELECT customer.manager FROM customer LIMIT 1"}).encode()
+                        req_m = UReq(
+                            f"https://googleads.googleapis.com/v20/customers/{test_cid}/googleAds:search",
+                            data=q,
+                            headers={
+                                "Authorization": f"Bearer {access_token}",
+                                "developer-token": st["developerToken"],
+                                "Content-Type": "application/json",
+                                "login-customer-id": test_cid,
+                            }, method="POST")
+                        with uopen(req_m, timeout=6) as rm:
+                            rd = json.loads(rm.read())
+                        rows = rd.get("results", [])
+                        if rows and rows[0].get("customer", {}).get("manager", False):
+                            manager_ids.append(test_cid)
+                    except Exception:
+                        pass  # not a manager or not accessible
+
             GCHandler._google_oauth_state.update({
                 "status": "done",
                 "refreshToken": refresh_token,
                 "customerIds": customer_ids,
+                "managerIds": manager_ids,
                 "customersError": customers_error,
                 "hasRefreshToken": bool(refresh_token),
                 "tokenKeys": list(tokens.keys()),
@@ -407,6 +432,7 @@ window.GC_BOOTSTRAP = {{
             "hasRefreshToken": st.get("hasRefreshToken", False),
             "customersError": st.get("customersError", ""),
             "tokenKeys":     st.get("tokenKeys", []),
+            "managerIds":    st.get("managerIds", []),
         }).encode()
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
@@ -503,6 +529,7 @@ window.GC_BOOTSTRAP = {{
                 },
                 "googleAds": {
                     "customerId":    g("google_ads_customer_id", "gadsCustomerId"),
+                "loginCustomerId": re.sub(r"\D", "", g("google_ads_login_customer_id", "gadsLoginCustomerId")),
                     "developerToken": g("google_ads_developer_token", "gadsDeveloperToken"),
                     "clientId":      g("google_ads_oauth_client_id", "gadsClientId"),
                     "clientSecret":  g("google_ads_oauth_client_secret", "gadsClientSecret"),

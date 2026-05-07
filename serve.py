@@ -445,10 +445,11 @@ window.GC_BOOTSTRAP = {{
     def _setup_test_shopify(self):
         length = int(self.headers.get("Content-Length", 0))
         body   = json.loads(self.rfile.read(length))
-        domain      = body.get("storeDomain", "").strip().rstrip("/")
-        cid         = body.get("clientId", "").strip()
-        csecret     = body.get("clientSecret", "").strip()
-        static_tok  = body.get("staticToken", "").strip()
+        # Accept both snake_case (frontend form) and camelCase (legacy)
+        domain      = (body.get("storeDomain") or body.get("domain", "")).strip().rstrip("/")
+        cid         = (body.get("clientId") or body.get("client_id", "")).strip()
+        csecret     = (body.get("clientSecret") or body.get("client_secret", "")).strip()
+        static_tok  = (body.get("staticToken") or body.get("static_token") or body.get("shopify_static_token", "")).strip()
         try:
             from urllib.request import Request as UReq, urlopen as uopen
             # Static token path (legacy custom app)
